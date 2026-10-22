@@ -1,0 +1,51 @@
+name: mallsentinel
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mallsentinel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env (see .env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:-mallsentinel}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+
+  adminer:
+    image: adminer:4
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "8025:8025"   # web UI
+      - "1025:1025"   # SMTP
+
+volumes:
+  pgdata:

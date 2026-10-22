@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.vscode/
+*.log
+
+# Local-only material: the read-only reference project (contains credentials and a Python venv) and tool settings
+reference site/
+.claude/
+*.tsbuildinfo
+resources/SRS documentation/
