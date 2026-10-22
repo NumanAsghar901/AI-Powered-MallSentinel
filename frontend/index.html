@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo-mark.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0B1F3F" />
+    <meta name="description" content="MallSentinel watches your existing CCTV cameras for SOP compliance in bakery, meat shop and security sections, drafts the incident brief and keeps a tamper-evident audit trail." />
+    <meta property="og:title" content="MallSentinel: AI-powered compliance monitoring for malls &amp; marts" />
+    <meta property="og:description" content="Real-time SOP compliance monitoring on your existing CCTV, with supervisor review and a tamper-evident audit trail." />
+    <meta property="og:type" content="website" />
+    <title>MallSentinel | AI-powered compliance monitoring for malls &amp; marts</title>
+    <script>
+      // Marks the page as script-enabled (scroll-reveal only hides content when this is set).
+      document.documentElement.classList.add('js')
+      // Apply the saved theme before first paint to avoid a flash.
+      try {
+        var t = localStorage.getItem('ms-theme')
+        var dark = t ? t === 'dark' : true
+        if (dark) document.documentElement.classList.add('dark')
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

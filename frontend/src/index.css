@@ -1,0 +1,784 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource/sora/600.css';
+@import '@fontsource/sora/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Brand tokens sampled from resources/logo (navy #071833 lifted to #0B1F3F for UI surfaces,
+  teal #0B5C75, maroon #802538, amber #C6843D, steel #306F97).
+  Semantic colours (success/warning/danger/info) are deliberately different hues from the section colours.
+*/
+@layer base {
+  :root {
+    --background: 210 33% 98%;
+    --foreground: 217 45% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 217 45% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 217 45% 14%;
+    --primary: 217 70% 15%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 30% 94%;
+    --secondary-foreground: 217 45% 20%;
+    --muted: 210 30% 95%;
+    --muted-foreground: 215 16% 40%;
+    --accent: 194 60% 94%;
+    --accent-foreground: 194 83% 22%;
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 24% 88%;
+    --input: 214 24% 82%;
+    --ring: 194 83% 30%;
+    --radius: 0.5rem;
+
+    --brand-navy: 217 70% 15%;
+    --brand-teal: 194 83% 25%;
+
+    --sidebar: 217 70% 15%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-muted: 213 26% 68%;
+    --sidebar-accent: 217 55% 23%;
+    --sidebar-border: 217 50% 22%;
+
+    --section-meat: 352 58% 33%;
+    --section-bakery: 33 62% 50%;
+    --section-security: 207 52% 40%;
+
+    --success: 152 60% 30%;
+    --success-soft: 152 50% 93%;
+    --warning: 45 95% 38%;
+    --warning-soft: 48 95% 92%;
+    --danger-soft: 0 85% 95%;
+    --info: 199 80% 38%;
+    --info-soft: 199 80% 94%;
+  }
+
+  .dark {
+    --background: 217 50% 7%;
+    --foreground: 210 30% 94%;
+    --card: 217 45% 10%;
+    --card-foreground: 210 30% 94%;
+    --popover: 217 45% 10%;
+    --popover-foreground: 210 30% 94%;
+    --primary: 192 70% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 35% 17%;
+    --secondary-foreground: 210 30% 92%;
+    --muted: 217 35% 15%;
+    --muted-foreground: 213 20% 66%;
+    --accent: 217 40% 18%;
+    --accent-foreground: 190 70% 72%;
+    --destructive: 0 68% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 30% 20%;
+    --input: 217 30% 26%;
+    --ring: 192 70% 50%;
+
+    --brand-navy: 217 70% 15%;
+    --brand-teal: 192 70% 50%;
+
+    --sidebar: 217 70% 11%;
+    --sidebar-accent: 217 55% 20%;
+    --sidebar-border: 217 50% 18%;
+
+    --success: 152 55% 50%;
+    --success-soft: 152 40% 14%;
+    --warning: 45 90% 55%;
+    --warning-soft: 45 50% 14%;
+    --danger-soft: 0 50% 16%;
+    --info: 199 80% 60%;
+    --info-soft: 199 50% 15%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading tracking-tight;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+/* ------------------------------------------------------------------------------------------------
+   Public website effects. Used only by src/pages/landing; the app and auth pages do not use them.
+   ------------------------------------------------------------------------------------------------ */
+
+html {
+  scroll-padding-top: 5rem; /* sticky navbar height */
+}
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Glass cards: translucent surface + blur + thin light border. */
+.glass {
+  background: hsl(0 0% 100% / 0.72);
+  border: 1px solid hsl(217 40% 20% / 0.1);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.7),
+    0 10px 30px -14px hsl(217 70% 15% / 0.28);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+.dark .glass {
+  background: hsl(217 60% 14% / 0.55);
+  border-color: hsl(190 60% 85% / 0.12);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.06),
+    0 10px 30px -14px hsl(0 0% 0% / 0.65);
+}
+/* Always-navy glass for use on the navy hero / CTA / footer bands, in both themes. */
+.glass-navy {
+  background: hsl(217 60% 18% / 0.5);
+  border: 1px solid hsl(190 60% 85% / 0.16);
+  color: hsl(210 40% 96%);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.07),
+    0 14px 40px -16px hsl(0 0% 0% / 0.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+.glass-nav {
+  background: hsl(217 70% 11% / 0.8);
+  border-bottom: 1px solid hsl(190 60% 85% / 0.12);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  backdrop-filter: blur(16px) saturate(1.3);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: hsl(0 0% 100% / 0.95);
+  }
+  .dark .glass {
+    background: hsl(217 55% 14% / 0.95);
+  }
+  .glass-navy {
+    background: hsl(217 60% 18% / 0.92);
+  }
+  .glass-nav {
+    background: hsl(217 70% 11% / 0.96);
+  }
+}
+
+/* Soft teal glow behind the hero and CTAs. A radial gradient (not a CSS blur) so it stays cheap to paint. */
+.teal-glow {
+  background: radial-gradient(closest-side, hsl(190 85% 45% / 0.34), hsl(190 85% 45% / 0.1) 55%, transparent 100%);
+}
+
+/* Hover: teal glow, plus a small lift where motion is allowed. */
+.lift {
+  transition:
+    box-shadow 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s ease;
+}
+.lift:hover,
+.lift:focus-within {
+  border-color: hsl(190 70% 50% / 0.55);
+  box-shadow: 0 18px 40px -20px hsl(190 85% 45% / 0.55);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lift:hover {
+    transform: translateY(-4px);
+  }
+}
+
+/* Scroll reveal: only hides content once the page has confirmed JavaScript is running. */
+html.js .reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
+  transition-delay: var(--d, 0ms);
+}
+html.js .reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.js .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------------------------------------------
+   Public website, v2: premium effects. All motion is switched off under prefers-reduced-motion.
+   ------------------------------------------------------------------------------------------------ */
+
+@property --beam-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Faint engineered grid, fading out toward the edges. */
+.grid-bg {
+  background-image:
+    linear-gradient(hsl(190 60% 80% / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(190 60% 80% / 0.07) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, #000 25%, transparent 100%);
+  mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, #000 25%, transparent 100%);
+}
+
+.steel-glow {
+  background: radial-gradient(closest-side, hsl(207 62% 50% / 0.3), hsl(207 62% 50% / 0.08) 55%, transparent 100%);
+}
+
+/* Shimmering gradient text for key words. */
+.shimmer-text {
+  background-image: linear-gradient(
+    100deg,
+    hsl(190 85% 56%) 0%,
+    hsl(190 92% 78%) 26%,
+    hsl(0 0% 100%) 38%,
+    hsl(190 92% 78%) 50%,
+    hsl(207 70% 64%) 72%,
+    hsl(190 85% 56%) 100%
+  );
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: shimmer 6s ease-in-out infinite alternate;
+}
+@keyframes shimmer {
+  from {
+    background-position: 0% 0;
+  }
+  to {
+    background-position: 100% 0;
+  }
+}
+
+/* Primary button with a glowing conic "border beam" that travels around the edge. */
+.beam-btn {
+  --beam-angle: 0deg;
+  position: relative;
+  border: 2px solid transparent;
+  color: #fff;
+  background:
+    linear-gradient(hsl(199 80% 24%), hsl(192 82% 30%)) padding-box,
+    conic-gradient(
+        from var(--beam-angle),
+        hsl(190 70% 50% / 0.25) 0 55%,
+        hsl(190 90% 55%) 78%,
+        hsl(0 0% 100%) 90%,
+        hsl(190 70% 50% / 0.25) 100%
+      )
+      border-box;
+  box-shadow:
+    0 0 38px -8px hsl(190 85% 50% / 0.65),
+    inset 0 0 0 1px hsl(190 70% 70% / 0.18);
+  animation: beam-spin 3.4s linear infinite;
+  transition: filter 0.2s ease;
+}
+.beam-btn:hover {
+  filter: brightness(1.15);
+}
+@keyframes beam-spin {
+  to {
+    --beam-angle: 360deg;
+  }
+}
+
+/* Cursor-following spotlight: --mx / --my are set by <SpotlightCard>. */
+.spot {
+  position: relative;
+  --mx: 50%;
+  --my: 50%;
+}
+.spot::before,
+.spot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.spot::before {
+  background: radial-gradient(420px circle at var(--mx) var(--my), hsl(190 90% 60% / 0.16), transparent 60%);
+}
+.spot::after {
+  padding: 1px;
+  background: radial-gradient(240px circle at var(--mx) var(--my), hsl(190 90% 68% / 0.85), transparent 65%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+.spot:hover::before,
+.spot:hover::after {
+  opacity: 1;
+}
+.tilt {
+  transform-style: preserve-3d;
+  transition:
+    transform 0.25s ease-out,
+    box-shadow 0.25s ease;
+  will-change: transform;
+}
+.tilt-leave {
+  transition:
+    transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.25s ease;
+}
+
+/* Marquee: right to left by default, reverse with --dir: reverse. Pauses on hover. */
+.marquee {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+}
+.marquee-track {
+  --gap: 1.25rem;
+  display: flex;
+  width: max-content;
+  gap: var(--gap);
+  animation: marquee var(--dur, 70s) linear infinite;
+  animation-direction: var(--dir, normal);
+}
+.marquee:hover .marquee-track,
+.marquee:focus-within .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-50% - var(--gap) / 2));
+  }
+}
+
+.float {
+  animation: float 7s ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+/* CCTV simulation pieces */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.22) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply;
+}
+.scan-sweep {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 28%;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, hsl(190 90% 60% / 0.16), transparent);
+  animation: sweep 4.5s linear infinite;
+}
+@keyframes sweep {
+  from {
+    transform: translateY(-110%);
+  }
+  to {
+    transform: translateY(380%);
+  }
+}
+.rec-dot {
+  animation: blink 1.2s steps(2, jump-none) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.15;
+  }
+}
+.sway {
+  animation: sway 3.2s ease-in-out infinite alternate;
+}
+@keyframes sway {
+  to {
+    transform: translateX(5px);
+  }
+}
+.box-pulse {
+  animation: box-pulse 1.4s ease-in-out infinite;
+}
+@keyframes box-pulse {
+  50% {
+    stroke-opacity: 0.35;
+  }
+}
+@keyframes step-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.pop-in {
+  animation: pop-in 0.4s ease-out both;
+}
+
+.scroll-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  height: 3px;
+  transform-origin: 0 50%;
+  transform: scaleX(var(--sp, 0));
+  background: linear-gradient(90deg, hsl(192 82% 40%), hsl(190 92% 66%), hsl(207 66% 58%));
+  box-shadow: 0 0 12px hsl(190 90% 55% / 0.8);
+}
+.timeline-fill {
+  transform-origin: top;
+  transform: scaleY(var(--p, 0));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-text,
+  .beam-btn,
+  .float,
+  .scan-sweep,
+  .rec-dot,
+  .sway,
+  .box-pulse,
+  .pop-in {
+    animation: none;
+  }
+  .marquee {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .marquee-track {
+    animation: none;
+    width: auto;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .marquee-dup {
+    display: none;
+  }
+  .tilt {
+    transform: none !important;
+  }
+}
+
+/* Landing page theme tokens: dark is the designed look, light is a clean navy-on-white counterpart. */
+:root {
+  --ln-1: 210 40% 98%;
+  --ln-2: 214 32% 94%;
+  --ln-fg: 217 70% 15%;
+  --ln-muted: 215 19% 34%;
+  --ln-faint: 215 16% 42%;
+  --ln-accent: 194 83% 27%;
+  --ln-grid: 217 50% 30% / 0.09;
+}
+.dark {
+  --ln-1: 217 70% 12%;
+  --ln-2: 217 70% 9%;
+  --ln-fg: 0 0% 100%;
+  --ln-muted: 213 26% 78%;
+  --ln-faint: 213 26% 68%;
+  --ln-accent: 190 80% 68%;
+  --ln-grid: 190 60% 80% / 0.07;
+}
+.grid-bg {
+  background-image:
+    linear-gradient(hsl(var(--ln-grid)) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--ln-grid)) 1px, transparent 1px);
+}
+/* The light-mode shimmer needs darker stops, or the gradient vanishes on white. */
+:root:not(.dark) .shimmer-text {
+  background-image: linear-gradient(
+    100deg,
+    hsl(194 83% 28%) 0%,
+    hsl(190 85% 38%) 30%,
+    hsl(207 66% 36%) 55%,
+    hsl(190 85% 38%) 80%,
+    hsl(194 83% 28%) 100%
+  );
+}
+:root:not(.dark) .teal-glow {
+  background: radial-gradient(closest-side, hsl(190 85% 50% / 0.2), hsl(190 85% 50% / 0.06) 55%, transparent 100%);
+}
+:root:not(.dark) .steel-glow {
+  background: radial-gradient(closest-side, hsl(207 62% 50% / 0.16), hsl(207 62% 50% / 0.05) 55%, transparent 100%);
+}
+
+/* Dark "screen" surfaces (HUD cards, the CCTV wall, the navbar) must stay dark on a light page, so they get more opaque. */
+:root:not(.dark) .glass-navy {
+  background: hsl(217 60% 15% / 0.93);
+}
+:root:not(.dark) .glass-nav {
+  background: hsl(217 70% 11% / 0.93);
+}
+
+/* ------------------------------------------------------------------------------------------------
+   Public website, v3: highlighted headings, impact cards, reveal variants, scroll parallax,
+   mixed-colour light theme and extra glows.
+   ------------------------------------------------------------------------------------------------ */
+
+/* Important words in headings: our blue (teal into steel-blue). */
+.hl {
+  background-image: linear-gradient(95deg, hsl(190 92% 66%), hsl(207 88% 68%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+:root:not(.dark) .hl {
+  background-image: linear-gradient(95deg, hsl(194 85% 30%), hsl(212 78% 44%));
+}
+
+/* Reveal variants (see <Reveal variant>). */
+html.js .reveal[data-v='left'] {
+  transform: translateX(-48px);
+}
+html.js .reveal[data-v='right'] {
+  transform: translateX(48px);
+}
+html.js .reveal[data-v='zoom'] {
+  transform: scale(0.92);
+}
+html.js .reveal[data-v='blur'] {
+  transform: translateY(18px);
+  filter: blur(10px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease,
+    filter 0.7s ease;
+  transition-delay: var(--d, 0ms);
+}
+html.js .reveal.is-in[data-v] {
+  transform: none;
+  filter: none;
+}
+
+/* "Impact" cards: the card slams toward the screen, then throws a big glow out from every side. */
+.impact-card {
+  --glow: 190 95% 58%;
+}
+html.js .impact-wrap:not(.is-hit) .impact-card {
+  opacity: 0;
+}
+.impact-wrap.is-hit .impact-card {
+  opacity: 1;
+  box-shadow:
+    0 0 0 1px hsl(var(--glow) / 0.28),
+    0 0 46px -6px hsl(var(--glow) / 0.35),
+    0 0 100px -24px hsl(207 85% 55% / 0.3);
+  animation:
+    impact-slam 0.9s cubic-bezier(0.2, 0.9, 0.25, 1.05) backwards,
+    impact-glow 1.8s ease-out backwards;
+}
+.impact-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  border: 2px solid hsl(var(--glow) / 0.9);
+  opacity: 0;
+}
+.impact-wrap.is-hit .impact-ring {
+  animation: impact-ring 1.3s ease-out 0.45s backwards;
+}
+.impact-wrap.is-hit .impact-node {
+  animation: impact-node 1.4s ease-out 0.3s backwards;
+}
+@keyframes impact-slam {
+  0% {
+    opacity: 0;
+    transform: perspective(900px) translateZ(340px) scale(1.2) rotateX(12deg);
+    filter: blur(10px);
+  }
+  50% {
+    opacity: 1;
+    transform: perspective(900px) translateZ(-18px) scale(0.955) rotateX(-1.5deg);
+    filter: blur(0);
+  }
+  72% {
+    transform: perspective(900px) translateZ(8px) scale(1.014);
+  }
+  100% {
+    transform: perspective(900px) translateZ(0) scale(1);
+  }
+}
+@keyframes impact-glow {
+  0%,
+  35% {
+    box-shadow: 0 0 0 0 hsl(var(--glow) / 0);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px hsl(var(--glow) / 1),
+      0 0 70px 22px hsl(var(--glow) / 0.9),
+      0 0 170px 70px hsl(207 90% 58% / 0.6),
+      0 0 320px 140px hsl(190 95% 55% / 0.36);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px hsl(var(--glow) / 0.28),
+      0 0 46px -6px hsl(var(--glow) / 0.35),
+      0 0 100px -24px hsl(207 85% 55% / 0.3);
+  }
+}
+@keyframes impact-ring {
+  0% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35, 1.7);
+  }
+}
+@keyframes impact-node {
+  0% {
+    box-shadow: 0 0 0 0 hsl(190 95% 60% / 0.9);
+  }
+  100% {
+    box-shadow: 0 0 0 30px hsl(190 95% 60% / 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.js .impact-wrap:not(.is-hit) .impact-card {
+    opacity: 1;
+  }
+  .impact-wrap.is-hit .impact-card,
+  .impact-wrap.is-hit .impact-ring,
+  .impact-wrap.is-hit .impact-node {
+    animation: none;
+  }
+}
+
+/* Scroll parallax for glows (CSS scroll-driven animation; browsers without support just show them still). */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .parallax {
+      animation: parallax-y linear both;
+      animation-timeline: view();
+    }
+  }
+}
+@keyframes parallax-y {
+  from {
+    translate: 0 var(--p-from, 90px);
+  }
+  to {
+    translate: 0 var(--p-to, -90px);
+  }
+}
+
+/* More logo-colour glows. */
+.amber-glow {
+  background: radial-gradient(closest-side, hsl(33 85% 55% / 0.2), hsl(33 85% 55% / 0.06) 55%, transparent 100%);
+}
+.maroon-glow {
+  background: radial-gradient(closest-side, hsl(352 70% 50% / 0.16), hsl(352 70% 50% / 0.05) 55%, transparent 100%);
+}
+
+/* Light theme: instead of flat white, each band mixes the logo colours (teal, steel-blue, amber, maroon) softly. */
+:root:not(.dark) .ln-mix-a {
+  background-image: linear-gradient(160deg, hsl(190 75% 95%) 0%, hsl(210 70% 97%) 48%, hsl(33 80% 95%) 100%);
+}
+:root:not(.dark) .ln-mix-b {
+  background-image: linear-gradient(200deg, hsl(207 70% 94%) 0%, hsl(190 65% 96%) 50%, hsl(352 60% 96%) 100%);
+}
+:root:not(.dark) .ln-mix-c {
+  background-image: linear-gradient(180deg, hsl(33 80% 95%) 0%, hsl(190 65% 95%) 55%, hsl(207 70% 93%) 100%);
+}
+:root:not(.dark) .teal-glow {
+  background: radial-gradient(closest-side, hsl(190 90% 50% / 0.32), hsl(190 90% 50% / 0.09) 55%, transparent 100%);
+}
+:root:not(.dark) .steel-glow {
+  background: radial-gradient(closest-side, hsl(207 75% 52% / 0.26), hsl(207 75% 52% / 0.07) 55%, transparent 100%);
+}
+:root:not(.dark) .amber-glow {
+  background: radial-gradient(closest-side, hsl(33 90% 55% / 0.3), hsl(33 90% 55% / 0.08) 55%, transparent 100%);
+}
+:root:not(.dark) .maroon-glow {
+  background: radial-gradient(closest-side, hsl(352 75% 52% / 0.2), hsl(352 75% 52% / 0.06) 55%, transparent 100%);
+}
+.dark .amber-glow {
+  background: radial-gradient(closest-side, hsl(33 85% 55% / 0.1), transparent 100%);
+}
+.dark .maroon-glow {
+  background: radial-gradient(closest-side, hsl(352 70% 50% / 0.1), transparent 100%);
+}
+/* Light glass cards carry a soft coloured glow instead of a grey shadow. */
+:root:not(.dark) .glass {
+  background: hsl(0 0% 100% / 0.78);
+  border-color: hsl(194 60% 40% / 0.16);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.9),
+    0 14px 44px -16px hsl(190 80% 42% / 0.32),
+    0 4px 16px -8px hsl(207 70% 40% / 0.2);
+}
+
+/* Reduced motion: every reveal variant is simply visible (declared last so it beats the variant rules above). */
+@media (prefers-reduced-motion: reduce) {
+  html.js .reveal,
+  html.js .reveal[data-v] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+}
+
+/* Shimmer on an always-navy surface (dashboard banners) keeps the bright gradient in light mode too. */
+:root:not(.dark) .shimmer-text.on-dark {
+  background-image: linear-gradient(
+    100deg,
+    hsl(190 85% 56%) 0%,
+    hsl(190 92% 78%) 26%,
+    hsl(0 0% 100%) 38%,
+    hsl(190 92% 78%) 50%,
+    hsl(207 70% 64%) 72%,
+    hsl(190 85% 56%) 100%
+  );
+}
