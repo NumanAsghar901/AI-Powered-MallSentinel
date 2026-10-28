@@ -132,9 +132,9 @@ async def test_logout_revokes_refresh_token(client, world):
     assert (await client.post(f"{API}/auth/refresh")).status_code == 401
 
 
-async def test_disabling_user_kills_existing_access_token(client, world, admin_h, emp_h):
+async def test_disabling_user_kills_existing_access_token(client, world, sup_h, emp_h):
     assert (await client.get(f"{API}/auth/me", headers=emp_h)).status_code == 200
-    r = await client.post(f"{API}/users/{world.bakery_emp.id}/disable", headers=admin_h)
+    r = await client.patch(f"{API}/employees/{world.bakery_emp.id}", headers=sup_h, json={"status": "disabled"})
     assert r.status_code == 200
     r = await client.get(f"{API}/auth/me", headers=emp_h)
     assert r.status_code == 401 and r.json()["code"] == "ACCOUNT_INACTIVE"

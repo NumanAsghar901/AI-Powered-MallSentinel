@@ -62,3 +62,10 @@ async def remove_employee(
 ) -> Response:
     await user_service.remove_department_employee(db, actor, user_id, client_ip(request))
     return Response(status_code=204)
+
+
+@router.post("/{user_id}/unlock", response_model=UserOut)
+async def unlock_employee(
+    user_id: uuid.UUID, request: Request, actor: User = SupervisorOnly, db: AsyncSession = Depends(get_db)
+) -> UserOut:
+    return UserOut.from_user(await user_service.unlock_department_employee(db, actor, user_id, client_ip(request)))

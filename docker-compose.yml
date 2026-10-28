@@ -40,12 +40,5 @@ services:
     ports:
       - "8080:8080"
 
-  mailpit:
-    image: axllent/mailpit:latest
-    restart: unless-stopped
-    ports:
-      - "8025:8025"   # web UI
-      - "1025:1025"   # SMTP
-
 volumes:
   pgdata:

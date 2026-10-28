@@ -13,7 +13,11 @@ import { NavTracker } from '@/routes/NavTracker'
 // The signed-in app is code-split so visitors to the public site never download it.
 const AppShell = lazy(() => import('@/components/layout/AppShell').then((m) => ({ default: m.AppShell })))
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })))
-const UsersPage = lazy(() => import('@/pages/admin/UsersPage').then((m) => ({ default: m.UsersPage })))
+const SupervisorsPage = lazy(() =>
+  import('@/pages/admin/SupervisorsPage').then((m) => ({ default: m.SupervisorsPage })),
+)
+const PenaltiesPage = lazy(() => import('@/pages/supervisor/PenaltiesPage').then((m) => ({ default: m.PenaltiesPage })))
+const MyPenaltiesPage = lazy(() => import('@/pages/employee/MyPenaltiesPage').then((m) => ({ default: m.MyPenaltiesPage })))
 const SupervisorDashboard = lazy(() =>
   import('@/pages/supervisor/SupervisorDashboard').then((m) => ({ default: m.SupervisorDashboard })),
 )
@@ -39,14 +43,16 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route element={<RequireRole roles={['admin']} />}>
               <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<UsersPage />} />
+              <Route path="/admin/supervisors" element={<SupervisorsPage />} />
             </Route>
             <Route element={<RequireRole roles={['supervisor']} />}>
               <Route path="/supervisor" element={<SupervisorDashboard />} />
               <Route path="/supervisor/employees" element={<EmployeesPage />} />
+              <Route path="/supervisor/penalties" element={<PenaltiesPage />} />
             </Route>
             <Route element={<RequireRole roles={['employee']} />}>
               <Route path="/employee" element={<EmployeeDashboard />} />
+              <Route path="/employee/penalties" element={<MyPenaltiesPage />} />
               <Route path="/employee/profile" element={<ProfilePage />} />
             </Route>
             <Route path="/403" element={<ForbiddenPage />} />

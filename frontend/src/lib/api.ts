@@ -4,10 +4,13 @@ import type {
   EmployeeUpdateInput,
   Page,
   TokenResponse,
+  Penalty,
+  PenaltyCreateInput,
+  PenaltyListParams,
+  SupervisorCreateInput,
+  SupervisorUpdateInput,
   User,
-  UserCreateInput,
   UserListParams,
-  UserUpdateInput,
 } from './types'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
@@ -201,13 +204,15 @@ export const api = {
   departments: {
     list: () => request<Department[]>('/departments'),
   },
-  users: {
-    list: (params: UserListParams) => request<Page<User>>(`/users${buildQuery(params)}`),
-    create: (body: UserCreateInput) => post<User>('/users', body),
-    update: (id: string, body: UserUpdateInput) => request<User>(`/users/${id}`, { method: 'PATCH', json: body }),
-    disable: (id: string) => post<User>(`/users/${id}/disable`),
-    enable: (id: string) => post<User>(`/users/${id}/enable`),
-    unlock: (id: string) => post<User>(`/users/${id}/unlock`),
+  /** Admin: supervisors only. Employees are managed by supervisors. */
+  supervisors: {
+    list: (params: UserListParams) => request<Page<User>>(`/supervisors${buildQuery(params)}`),
+    create: (body: SupervisorCreateInput) => post<User>('/supervisors', body),
+    update: (id: string, body: SupervisorUpdateInput) =>
+      request<User>(`/supervisors/${id}`, { method: 'PATCH', json: body }),
+    disable: (id: string) => post<User>(`/supervisors/${id}/disable`),
+    enable: (id: string) => post<User>(`/supervisors/${id}/enable`),
+    unlock: (id: string) => post<User>(`/supervisors/${id}/unlock`),
   },
   employees: {
     list: (params: Pick<UserListParams, 'search' | 'status' | 'page' | 'page_size' | 'sort' | 'order'>) =>
@@ -216,5 +221,15 @@ export const api = {
     update: (id: string, body: EmployeeUpdateInput) =>
       request<User>(`/employees/${id}`, { method: 'PATCH', json: body }),
     remove: (id: string) => request<void>(`/employees/${id}`, { method: 'DELETE' }),
+    unlock: (id: string) => post<User>(`/employees/${id}/unlock`),
+  },
+  penalties: {
+    /** Supervisor: penalties in their own section. */
+    list: (params: PenaltyListParams) => request<Page<Penalty>>(`/penalties${buildQuery(params)}`),
+    create: (body: PenaltyCreateInput) => post<Penalty>('/penalties', body),
+    resendEmail: (id: string) => post<Penalty>(`/penalties/${id}/resend-email`),
+    /** Employee: only their own penalties. */
+    mine: (params: Pick<PenaltyListParams, 'page' | 'page_size'>) =>
+      request<Page<Penalty>>(`/penalties/mine${buildQuery(params)}`),
   },
 }

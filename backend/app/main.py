@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
-from app.routers import auth, departments, employees, health, users
+from app.routers import auth, departments, employees, health, penalties, supervisors
 
 
 def create_app() -> FastAPI:
@@ -16,7 +16,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     register_exception_handlers(app)
-    for module in (health, auth, users, employees, departments):
+    for module in (health, auth, supervisors, employees, penalties, departments):
         app.include_router(module.router, prefix=settings.API_PREFIX)
     return app
 

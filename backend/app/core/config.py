@@ -31,12 +31,14 @@ class Settings(BaseSettings):
     LOGIN_LOCKOUT_MINUTES: int = 15
     PASSWORD_RESET_EXPIRE_MINUTES: int = 30
 
-    SMTP_HOST: str = "localhost"
-    SMTP_PORT: int = 1025
+    # Gmail SMTP. SMTP_PASSWORD must be a Google "App Password" (needs 2-step verification), not the account password.
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
     SMTP_USER: str | None = None
     SMTP_PASSWORD: str | None = None
-    SMTP_STARTTLS: bool = False
-    SMTP_FROM: str = "MallSentinel <no-reply@mallsentinel.pk>"
+    SMTP_STARTTLS: bool = True
+    # Gmail always sends from the authenticated account; this only sets the display name part.
+    SMTP_FROM: str | None = None
 
     SEED_ADMIN_EMAIL: str | None = None
     SEED_ADMIN_PASSWORD: str | None = None
@@ -47,6 +49,14 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.SMTP_USER and self.SMTP_PASSWORD)
+
+    @property
+    def mail_from(self) -> str:
+        return self.SMTP_FROM or f"MallSentinel <{self.SMTP_USER}>"
 
     @property
     def refresh_cookie_path(self) -> str:

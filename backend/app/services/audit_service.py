@@ -38,6 +38,8 @@ class AuditAction:
     USER_ENABLED = "user.enabled"
     USER_UNLOCKED = "user.unlocked"
     USER_REMOVED = "user.removed"
+    PENALTY_ISSUED = "penalty.issued"
+    PENALTY_EMAIL_RESENT = "penalty.email_resent"
 
 
 def _canonical(

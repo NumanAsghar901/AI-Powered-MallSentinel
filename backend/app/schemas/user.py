@@ -9,7 +9,6 @@ from app.models import User
 from app.models.enums import AuthProvider, UserRole, UserStatus
 from app.schemas.common import Name, NormalizedEmail, Password, Phone
 
-ManagedRole = Literal["supervisor", "employee"]
 Shift = Literal["morning", "evening", "night"]
 ShortText = Annotated[str, Field(max_length=150)]
 
@@ -74,29 +73,27 @@ class _ProfileFields(BaseModel):
     employee_code: Annotated[str, Field(max_length=30)] | None = None
 
 
-class UserCreate(_ProfileFields):
-    """Admin creates supervisors and employees."""
+class SupervisorCreate(BaseModel):
+    """Admin creates supervisors. Employees are created by supervisors (EmployeeCreate)."""
 
     email: NormalizedEmail
     full_name: Name
     phone: Phone | None = None
-    role: ManagedRole
     password: Password
     department_id: int
-    supervisor_id: uuid.UUID | None = None
+    designation: ShortText | None = None
 
 
-class UserUpdate(_ProfileFields):
+class SupervisorUpdate(BaseModel):
     email: NormalizedEmail | None = None
     full_name: Name | None = None
     phone: Phone | None = None
-    role: ManagedRole | None = None
     department_id: int | None = None
-    supervisor_id: uuid.UUID | None = None
+    designation: ShortText | None = None
     password: Password | None = None
 
     @model_validator(mode="after")
-    def _not_empty(self) -> "UserUpdate":
+    def _not_empty(self) -> "SupervisorUpdate":
         if not self.model_fields_set:
             raise ValueError("Provide at least one field to update")
         return self

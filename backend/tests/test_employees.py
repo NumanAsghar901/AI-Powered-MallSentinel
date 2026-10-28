@@ -97,10 +97,29 @@ async def test_remove_is_soft_delete_hides_and_blocks_login(client, world, sup_h
     assert (await client.delete(f"{API}/employees/{uid}", headers=sup_h)).status_code == 404
 
 
-async def test_removed_employee_visible_to_admin_for_history(client, world, sup_h, admin_h):
-    await client.delete(f"{API}/employees/{world.bakery_emp.id}", headers=sup_h)
-    r = await client.get(f"{API}/users", headers=admin_h, params={"status": "removed"})
-    assert r.json()["total"] == 1
+async def test_supervisor_can_unlock_own_employee_but_not_other_department(client, world, sup_h):
+    for _ in range(5):
+        await client.post(f"{API}/auth/login", json={"email": world.bakery_emp.email, "password": "wrong-password-1"})
+    listing = await client.get(f"{API}/employees", headers=sup_h)
+    assert listing.json()["items"][0]["is_locked"] is True
+    r = await client.post(f"{API}/employees/{world.bakery_emp.id}/unlock", headers=sup_h)
+    assert r.status_code == 200 and r.json()["is_locked"] is False
+    assert (await client.post(f"{API}/auth/login", json={"email": world.bakery_emp.email, "password": PASSWORD})).status_code == 200
+    assert (await client.post(f"{API}/employees/{world.meat_emp.id}/unlock", headers=sup_h)).status_code == 404
+
+
+async def test_admin_cannot_see_or_manage_employees(client, world, admin_h):
+    """Employee management belongs to supervisors; the admin role has no access to it."""
+    eid = world.bakery_emp.id
+    for method, path in (
+        ("get", "/employees"), ("get", f"/employees/{eid}"), ("delete", f"/employees/{eid}"),
+        ("post", f"/employees/{eid}/unlock"),
+    ):
+        r = await getattr(client, method)(API + path, headers=admin_h)
+        assert r.status_code == 403 and r.json()["code"] == "FORBIDDEN"
+    r = await client.get(f"{API}/supervisors", headers=admin_h)
+    assert {u["role"] for u in r.json()["items"]} == {"supervisor"}
+    assert (await client.get(f"{API}/supervisors/{eid}", headers=admin_h)).status_code == 404
 
 
 async def test_employee_can_read_only_self(client, world, emp_h):

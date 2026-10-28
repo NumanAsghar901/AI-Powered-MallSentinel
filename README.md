@@ -34,8 +34,8 @@ The detailed checklist lives in [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATIO
 **Authentication and access control**
 - One Sign In page for all roles. The backend identifies the role and the app redirects to `/admin`, `/supervisor` or `/employee`. No public sign-up.
 - Short-lived JWT access token plus a rotating refresh token in an httpOnly cookie. Each browser tab keeps its own session.
-- argon2 password hashing, lockout after 5 failed attempts (15 minutes, configurable), disabled-account handling, forgot and reset password by single-use expiring email (Mailpit in development).
-- `require_role(...)` on every protected endpoint. Admins manage supervisors and employees; supervisors manage employees of their own department only.
+- argon2 password hashing, lockout after 5 failed attempts (15 minutes, configurable), disabled-account handling, forgot and reset password by single-use expiring email (sent through Gmail SMTP).
+- `require_role(...)` on every protected endpoint. **Admins manage supervisors only** (and, later, the CCTV monitoring system). **Supervisors manage the employees of their own section** and issue penalties to them.
 - Google sign-in is prepared in the schema (`auth_provider`, nullable `google_sub`) but not implemented.
 
 **Audit ledger**
@@ -57,7 +57,8 @@ The detailed checklist lives in [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATIO
 | Backend | Python 3.11, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic v2 |
 | Auth | Own JWT + refresh cookie, argon2, RBAC |
 | Frontend | React 18, Vite, TypeScript (strict), Tailwind CSS, shadcn/ui, TanStack Query, React Router, react-hook-form + zod, react-three-fiber |
-| Dev infrastructure | Docker Compose: `db`, `backend`, `adminer` (DB UI), `mailpit` (dev email) |
+| Email | Gmail SMTP with an App Password (penalty notices, password reset) |
+| Dev infrastructure | Docker Compose: `db`, `backend`, `adminer` (DB UI) |
 | Planned | OpenCV + Ultralytics YOLO, WebSockets, local sentence-transformers embeddings, provider-agnostic LLM client |
 
 ## Repository layout
@@ -67,9 +68,28 @@ backend/     FastAPI app, Alembic migrations, pytest suite, Dockerfile, .env.exa
 frontend/    React + Vite app (runs standalone with `npm run dev`), .env.example
 docs/        Implementation plan, design direction, screenshots
 resources/   Logo (the SRS is the source of truth for requirements)
-docker-compose.yml   db, backend, adminer, mailpit
+docker-compose.yml   db, backend, adminer
 CLAUDE.md    Project rules and decisions
 ```
+
+## Who does what
+
+| Role | Responsibilities |
+|---|---|
+| **Admin** | Creates and manages the section **supervisors**. Will manage the **CCTV monitoring system** (cameras, duty zones, live monitoring), which is planned for Phase 2 onwards. Admins cannot see or change employees. |
+| **Supervisor** | Manages the **employees of their own section** (create, edit, disable, unlock, remove), reviews an employee's record and **issues penalties**. Each penalty is **emailed to the employee** at the address on their account. |
+| **Employee** | Sees their own dashboard, their own **penalties** and their own profile. Nothing about anyone else. |
+
+## Gmail setup (for penalty and password-reset emails)
+
+Email goes through Gmail SMTP. Without credentials the app still works: penalties are saved and shown with "Email not set up" and a **Resend** button.
+
+1. Turn on **2-step verification** for the Gmail account that will send the emails.
+2. Create an **App Password** (Google Account, Security, App passwords).
+3. In `backend/.env` set `SMTP_USER` to that Gmail address and `SMTP_PASSWORD` to the App Password (no spaces). Use the App Password, never the normal account password.
+4. Recreate the backend: `docker compose up -d --force-recreate backend`.
+
+Employees should be created with their own (Gmail) address, because that is where their penalty notices are sent.
 
 ## Getting started
 
@@ -86,7 +106,7 @@ cp backend/.env.example backend/.env
 #    - SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, SEED_DEMO_PASSWORD
 #      (use a real-looking email domain; .local, .test and .example are rejected)
 
-# 3. Start the database, backend (runs migrations on boot), Adminer and Mailpit
+# 3. Start the database, backend (runs migrations on boot) and Adminer
 docker compose up -d --build
 
 # 4. Seed the admin, the three departments and demo accounts (idempotent)
@@ -104,7 +124,6 @@ npm run dev
 | Website and app | http://localhost:5173 |
 | API and docs | http://localhost:8000/docs (base path `/api/v1`) |
 | Adminer (DB UI) | http://localhost:8080 (system PostgreSQL, server `db`) |
-| Mailpit (dev inbox) | http://localhost:8025 |
 
 All credentials come from environment variables; nothing is hardcoded. The seed prints the demo account emails (one supervisor and two employees per department); they share the password you set in `SEED_DEMO_PASSWORD`. To change the admin login later, edit `.env`, recreate the backend and run `docker compose exec backend python -m app.seed --sync-admin`.
 
@@ -125,8 +144,10 @@ All credentials come from environment variables; nothing is hardcoded. The seed 
 | `POST /auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/reset-password` | public (refresh uses the httpOnly cookie) |
 | `GET /auth/me`, `GET /departments` | any signed-in role |
 | `GET /health` | public |
-| `GET/POST /users`, `GET/PATCH /users/{id}`, `POST /users/{id}/disable`, `/enable`, `/unlock` | admin |
-| `GET/POST /employees`, `GET/PATCH/DELETE /employees/{id}` | supervisor, own department only (delete is a soft delete) |
+| `GET/POST /supervisors`, `GET/PATCH /supervisors/{id}`, `POST /supervisors/{id}/disable`, `/enable`, `/unlock` | admin (supervisors only; employees are invisible to admins) |
+| `GET/POST /employees`, `GET/PATCH/DELETE /employees/{id}`, `POST /employees/{id}/unlock` | supervisor, own department only (delete is a soft delete) |
+| `GET/POST /penalties`, `GET /penalties/{id}`, `POST /penalties/{id}/resend-email` | supervisor, own department only |
+| `GET /penalties/mine` | employee, their own penalties only |
 
 Errors always look like `{"detail": "...", "code": "SOME_CODE"}`.
 

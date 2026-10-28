@@ -45,7 +45,6 @@ export interface TokenResponse {
 
 export interface UserListParams {
   search?: string
-  role?: Role
   status?: UserStatus
   department_id?: number
   page?: number
@@ -61,21 +60,21 @@ export interface ProfileFields {
   employee_code?: string | null
 }
 
-export interface UserCreateInput extends ProfileFields {
+export interface SupervisorCreateInput {
   email: string
   full_name: string
   phone?: string | null
-  role: 'supervisor' | 'employee'
   password: string
   department_id: number
+  designation?: string | null
 }
 
-export interface UserUpdateInput extends ProfileFields {
+export interface SupervisorUpdateInput {
   email?: string
   full_name?: string
   phone?: string | null
-  role?: 'supervisor' | 'employee'
   department_id?: number
+  designation?: string | null
   password?: string
 }
 
@@ -98,4 +97,88 @@ export const ROLE_HOME: Record<Role, string> = {
   admin: '/admin',
   supervisor: '/supervisor',
   employee: '/employee',
+}
+
+// ---------------------------------------------------------------------------------------- penalties
+
+export type Severity = 'low' | 'medium' | 'high' | 'critical'
+export type PenaltyAction = 'verbal_warning' | 'written_warning' | 'fine' | 'suspension' | 'other'
+export type EmailStatus = 'pending' | 'sent' | 'failed' | 'not_configured'
+export type PenaltyReason =
+  | 'missing_hairnet'
+  | 'missing_gloves'
+  | 'missing_mask'
+  | 'missing_apron'
+  | 'uniform_violation'
+  | 'weapon_not_carried'
+  | 'left_duty_zone'
+  | 'other'
+
+export interface PersonRef {
+  id: string
+  full_name: string
+  email: string
+  employee_code: string | null
+}
+
+export interface Penalty {
+  id: string
+  employee: PersonRef
+  issued_by: PersonRef
+  department: Department
+  reason: PenaltyReason
+  reason_label: string
+  severity: Severity
+  action: PenaltyAction
+  action_label: string
+  amount_pkr: number | null
+  suspension_days: number | null
+  notes: string | null
+  email_status: EmailStatus
+  email_sent_at: string | null
+  created_at: string
+}
+
+export interface PenaltyCreateInput {
+  employee_id: string
+  reason: PenaltyReason
+  severity: Severity
+  action: PenaltyAction
+  amount_pkr?: number
+  suspension_days?: number
+  notes?: string
+}
+
+export interface PenaltyListParams {
+  search?: string
+  severity?: Severity
+  employee_id?: string
+  page?: number
+  page_size?: number
+}
+
+/** Which reasons apply to which section (mirrors the API; the API enforces it). */
+export const REASONS_BY_DEPARTMENT: Record<Department['code'], PenaltyReason[]> = {
+  bakery: ['missing_hairnet', 'missing_gloves', 'missing_mask', 'missing_apron', 'other'],
+  meat_shop: ['missing_hairnet', 'missing_gloves', 'missing_mask', 'missing_apron', 'other'],
+  security: ['uniform_violation', 'weapon_not_carried', 'left_duty_zone', 'other'],
+}
+
+export const REASON_LABELS: Record<PenaltyReason, string> = {
+  missing_hairnet: 'Hairnet not worn',
+  missing_gloves: 'Gloves not worn',
+  missing_mask: 'Mask not worn',
+  missing_apron: 'Apron not worn',
+  uniform_violation: 'Uniform violation',
+  weapon_not_carried: 'Weapon not carried',
+  left_duty_zone: 'Left assigned duty zone',
+  other: 'Other',
+}
+
+export const ACTION_LABELS: Record<PenaltyAction, string> = {
+  verbal_warning: 'Verbal warning',
+  written_warning: 'Written warning',
+  fine: 'Fine (PKR)',
+  suspension: 'Suspension',
+  other: 'Other action',
 }

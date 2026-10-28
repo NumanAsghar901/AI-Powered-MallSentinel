@@ -9,7 +9,8 @@ Read this file fully at the start of every session. Then read `docs/IMPLEMENTATI
 - `backend/` and `frontend/` are **separate, independent folders**, each with its own dependencies, Dockerfile and `.env.example`. The frontend must also run standalone with `npm run dev`.
 - **Auth decisions:**
   - One generic **Sign In** page for all three roles (Admin, Supervisor, Employee). The backend identifies the role and the frontend redirects to `/admin`, `/supervisor` or `/employee`. No role selector, no public sign-up.
-  - Admin creates supervisors and employees. Supervisors manage employees in their own department only.
+  - **Role split.** Admin creates and manages **supervisors only** and (later) the CCTV monitoring system; admins never see employees. Supervisors manage the **employees of their own department** and **issue penalties** to them (reviewing the employee's record first); each penalty is **emailed to the employee** at their account address. Employees see only their own penalties.
+  - **Email = Gmail SMTP** (App Password in `backend/.env`). There is no mail container; do not add Mailpit back.
   - The first admin account is seeded from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` in `backend/.env`. **Never hardcode credentials in code, tests, docs or commits.**
   - **Each browser tab keeps its own session.** The frontend sends a per-tab `X-Tab-Id` (kept in `sessionStorage`) and the API names the refresh cookie after it (`ms_refresh_<tab id>`), so an admin in one tab and an employee in another never swap accounts. The cookie stays httpOnly.
   - **Browser Back must behave.** Public auth pages (`/login`, `/forgot-password`, `/reset-password`) never auto-redirect signed-in users; `/login` shows an "already signed in" panel instead. Sign-in navigates with a normal history push.
@@ -50,7 +51,7 @@ Paths contain spaces — always quote them in shell commands.
 | CV service | Separate Python service: OpenCV (RTSP), Ultralytics YOLO + built-in ByteTrack tracking |
 | AI agent | Provider-agnostic LLM client (`LLM_PROVIDER` = `gemini` / `openai` / `ollama`), local embeddings with `sentence-transformers` (`all-MiniLM-L6-v2`, 384-dim) stored in pgvector |
 | Frontend | React 18 + Vite + TypeScript (strict), Tailwind CSS, shadcn/ui, TanStack Query, React Router, react-hook-form + zod, Recharts, lucide-react icons |
-| Dev infra | Docker Compose: `db`, `backend`, `frontend`, `cv-service`, `mediamtx` (simulated RTSP cameras from MP4 files), `adminer` (DB UI), `mailpit` (dev email for password reset) |
+| Dev infra | Docker Compose: `db`, `backend`, `frontend`, `cv-service`, `mediamtx` (simulated RTSP cameras from MP4 files), `adminer` (DB UI). Email goes through Gmail SMTP, no mail container |
 
 Everything runs with `docker compose up -d`. No paid cloud services are required.
 

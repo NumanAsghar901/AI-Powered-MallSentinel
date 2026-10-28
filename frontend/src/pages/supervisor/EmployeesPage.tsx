@@ -1,10 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Ban, CheckCircle2, Pencil, Plus, Search, Trash2, UsersRound } from 'lucide-react'
+import { Ban, CheckCircle2, Gavel, LockOpen, Pencil, Plus, Search, Trash2, UsersRound } from 'lucide-react'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { SectionBadge } from '@/components/Badges'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PageHeader } from '@/components/PageHeader'
+import { PenaltyDialog, penaltyToast } from '@/components/penalty/PenaltyDialog'
 import { Pagination } from '@/components/Pagination'
 import { EmptyState, ErrorState } from '@/components/StateViews'
 import { Button } from '@/components/ui/button'
@@ -38,6 +39,7 @@ export function EmployeesPage() {
   const [formOpen, setFormOpen] = useState(urlParams.get('new') === '1')
   const [editing, setEditing] = useState<User | null>(null)
   const [toRemove, setToRemove] = useState<User | null>(null)
+  const [penaltyFor, setPenaltyFor] = useState<User | null>(null)
 
   const debouncedSearch = useDebounced(search.trim())
   const params = {
@@ -63,6 +65,14 @@ export function EmployeesPage() {
       api.employees.update(user.id, { status: active ? 'active' : 'disabled' }),
     onSuccess: (u) => {
       toast.success(`${u.full_name} was ${u.status === 'active' ? 'enabled' : 'disabled'}.`)
+      void refresh()
+    },
+    onError: failure,
+  })
+  const unlock = useMutation({
+    mutationFn: (user: User) => api.employees.unlock(user.id),
+    onSuccess: (u) => {
+      toast.success(`${u.full_name} was unlocked.`)
       void refresh()
     },
     onError: failure,
@@ -93,7 +103,13 @@ export function EmployeesPage() {
     setEditing(null)
     setFormOpen(true)
   }
-  const busyId = setActive.isPending ? setActive.variables.user.id : remove.isPending ? remove.variables.id : null
+  const busyId = setActive.isPending
+    ? setActive.variables.user.id
+    : unlock.isPending
+      ? unlock.variables.id
+      : remove.isPending
+        ? remove.variables.id
+        : null
 
   return (
     <>
@@ -177,9 +193,19 @@ export function EmployeesPage() {
               busyId={busyId}
               renderActions={(u) => (
                 <>
+                  {u.status === 'active' && (
+                    <DropdownMenuItem onSelect={() => setPenaltyFor(u)}>
+                      <Gavel /> Review and penalise
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onSelect={() => { setEditing(u); setFormOpen(true) }}>
                     <Pencil /> Edit
                   </DropdownMenuItem>
+                  {u.is_locked && (
+                    <DropdownMenuItem onSelect={() => unlock.mutate(u)}>
+                      <LockOpen /> Unlock account
+                    </DropdownMenuItem>
+                  )}
                   {u.status === 'active' ? (
                     <DropdownMenuItem onSelect={() => setActive.mutate({ user: u, active: false })}>
                       <Ban /> Disable
@@ -209,6 +235,19 @@ export function EmployeesPage() {
         onSaved={(message) => {
           toast.success(message)
           void refresh()
+        }}
+      />
+
+      <PenaltyDialog
+        open={penaltyFor !== null}
+        onOpenChange={(o) => !o && setPenaltyFor(null)}
+        employee={penaltyFor}
+        onIssued={(p) => {
+          const t = penaltyToast(p)
+          if (t.ok) toast.success(t.message)
+          else toast.error(t.message)
+          void queryClient.invalidateQueries({ queryKey: ['penalties'] })
+          void queryClient.invalidateQueries({ queryKey: ['dash'] })
         }}
       />
 

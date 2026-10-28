@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { RoleBadge, SectionBadge, StatusBadge } from '@/components/Badges'
+import { SectionBadge, StatusBadge } from '@/components/Badges'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -79,8 +79,8 @@ export function UserTable({ users, variant, sort, order, onSort, renderActions, 
               <SortHeader label="Name" field="full_name" {...sortProps} />
               {variant === 'admin' ? (
                 <>
-                  <SortHeader label="Role" field="role" {...sortProps} />
-                  <th scope="col" className="px-4 py-3 text-left font-medium">Department</th>
+                  <th scope="col" className="px-4 py-3 text-left font-medium">Section</th>
+                  <th scope="col" className="px-4 py-3 text-left font-medium">Designation</th>
                 </>
               ) : (
                 <>
@@ -107,8 +107,8 @@ export function UserTable({ users, variant, sort, order, onSort, renderActions, 
                 </td>
                 {variant === 'admin' ? (
                   <>
-                    <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
                     <td className="px-4 py-3"><SectionBadge department={u.department} /></td>
+                    <td className="px-4 py-3 text-muted-foreground">{u.designation ?? '—'}</td>
                   </>
                 ) : (
                   <>
@@ -136,7 +136,6 @@ export function UserTable({ users, variant, sort, order, onSort, renderActions, 
                 <p className="truncate text-xs text-muted-foreground">{u.email}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {variant === 'admin' && <RoleBadge role={u.role} />}
                 {variant === 'admin' && <SectionBadge department={u.department} />}
                 <StatusBadge user={u} />
               </div>

@@ -14,7 +14,10 @@ import { applyApiErrors } from '@/lib/hooks'
 import { emailSchema, nameSchema, passwordSchema, phoneSchema, SHIFTS } from '@/lib/schemas'
 import type { Shift, User } from '@/lib/types'
 
-/** `admin` creates supervisors/employees in any department; `supervisor` only employees in their own. */
+/**
+ * `admin`: an admin creates or edits a **supervisor** (any section).
+ * `supervisor`: a supervisor creates or edits an **employee** in their own section.
+ */
 type Variant = 'admin' | 'supervisor'
 
 const NONE = '__none__'
@@ -23,7 +26,6 @@ const baseShape = {
   full_name: nameSchema,
   email: emailSchema,
   phone: phoneSchema,
-  role: z.enum(['supervisor', 'employee']),
   department_id: z.string(),
   designation: z.string().trim().max(100, 'Too long'),
   shift: z.string(),
@@ -39,27 +41,25 @@ function buildSchema(isEdit: boolean, variant: Variant) {
     })
     .superRefine((v, ctx) => {
       if (variant === 'admin' && !v.department_id) {
-        ctx.addIssue({ code: 'custom', path: ['department_id'], message: 'Select a department' })
+        ctx.addIssue({ code: 'custom', path: ['department_id'], message: 'Select a section' })
       }
     })
 }
 type FormValues = z.infer<ReturnType<typeof buildSchema>>
 
-const FIELDS = ['full_name', 'email', 'phone', 'role', 'department_id', 'designation', 'shift', 'assigned_area', 'employee_code', 'password']
+const FIELDS = ['full_name', 'email', 'phone', 'department_id', 'designation', 'shift', 'assigned_area', 'employee_code', 'password']
 
-function toValues(user: User | null, variant: Variant): FormValues {
+function toValues(user: User | null): FormValues {
   return {
     full_name: user?.full_name ?? '',
     email: user?.email ?? '',
     phone: user?.phone ?? '',
-    role: user?.role === 'supervisor' ? 'supervisor' : 'employee',
     department_id: user?.department ? String(user.department.id) : '',
     designation: user?.designation ?? '',
     shift: user?.shift ?? '',
     assigned_area: user?.assigned_area ?? '',
     employee_code: user?.employee_code ?? '',
     password: '',
-    ...(variant === 'supervisor' ? { role: 'employee' as const } : {}),
   }
 }
 
@@ -73,11 +73,12 @@ export function UserFormDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
   variant: Variant
-  /** null → create */
+  /** null creates a new account. */
   user: User | null
   onSaved: (message: string) => void
 }) {
   const isEdit = user !== null
+  const noun = variant === 'admin' ? 'supervisor' : 'employee'
   const schema = useMemo(() => buildSchema(isEdit, variant), [isEdit, variant])
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -94,68 +95,42 @@ export function UserFormDialog({
     handleSubmit,
     reset,
     setError,
-    watch,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: toValues(user, variant) })
+  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: toValues(user) })
 
   useEffect(() => {
     if (open) {
-      reset(toValues(user, variant))
+      reset(toValues(user))
       setFormError(null)
     }
-  }, [open, user, variant, reset])
-
-  const role = watch('role')
-  const showEmployeeFields = role === 'employee'
+  }, [open, user, reset])
 
   const onSubmit = handleSubmit(async (v) => {
     setFormError(null)
     const text = (s: string) => (s.trim() === '' ? null : s.trim())
-    const profile = {
-      designation: text(v.designation),
-      ...(showEmployeeFields
-        ? { shift: (text(v.shift) as Shift | null), assigned_area: text(v.assigned_area), employee_code: text(v.employee_code) }
-        : {}),
-    }
     try {
       if (variant === 'admin') {
-        if (isEdit) {
-          await api.users.update(user.id, {
-            full_name: v.full_name,
-            email: v.email,
-            phone: text(v.phone),
-            role: v.role,
-            department_id: Number(v.department_id),
-            ...profile,
-            ...(v.password ? { password: v.password } : {}),
-          })
-        } else {
-          await api.users.create({
-            full_name: v.full_name,
-            email: v.email,
-            phone: text(v.phone),
-            role: v.role,
-            department_id: Number(v.department_id),
-            password: v.password,
-            ...profile,
-          })
+        const common = {
+          full_name: v.full_name,
+          email: v.email,
+          phone: text(v.phone),
+          department_id: Number(v.department_id),
+          designation: text(v.designation),
         }
-      } else if (isEdit) {
-        await api.employees.update(user.id, {
-          full_name: v.full_name,
-          email: v.email,
-          phone: text(v.phone),
-          ...profile,
-          ...(v.password ? { password: v.password } : {}),
-        })
+        if (isEdit) await api.supervisors.update(user.id, { ...common, ...(v.password ? { password: v.password } : {}) })
+        else await api.supervisors.create({ ...common, password: v.password })
       } else {
-        await api.employees.create({
+        const common = {
           full_name: v.full_name,
           email: v.email,
           phone: text(v.phone),
-          password: v.password,
-          ...profile,
-        })
+          designation: text(v.designation),
+          shift: text(v.shift) as Shift | null,
+          assigned_area: text(v.assigned_area),
+          employee_code: text(v.employee_code),
+        }
+        if (isEdit) await api.employees.update(user.id, { ...common, ...(v.password ? { password: v.password } : {}) })
+        else await api.employees.create({ ...common, password: v.password })
       }
       onSaved(isEdit ? 'Changes saved.' : `${v.full_name} was added.`)
       onOpenChange(false)
@@ -163,8 +138,6 @@ export function UserFormDialog({
       setFormError(applyApiErrors(err, setError, FIELDS))
     }
   })
-
-  const noun = variant === 'supervisor' ? 'employee' : 'user'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -175,8 +148,8 @@ export function UserFormDialog({
             {isEdit
               ? 'Update the details below. Leave the password blank to keep it unchanged.'
               : variant === 'supervisor'
-                ? 'The employee is added to your department. Share the password with them securely.'
-                : 'Create a supervisor or employee account. Share the password with them securely.'}
+                ? 'The employee is added to your section. Use their Gmail address: penalty notices are emailed to it. Share the password with them securely.'
+                : 'Create a supervisor for a section. Share the password with them securely.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -187,7 +160,11 @@ export function UserFormDialog({
             <Field label="Full name" error={errors.full_name?.message}>
               {(p) => <Input {...p} autoComplete="off" {...register('full_name')} />}
             </Field>
-            <Field label="Email" error={errors.email?.message}>
+            <Field
+              label={variant === 'supervisor' ? 'Email (Gmail)' : 'Email'}
+              error={errors.email?.message}
+              {...(variant === 'supervisor' ? { hint: 'Penalty notices are sent here.' } : {})}
+            >
               {(p) => <Input {...p} type="email" autoComplete="off" inputMode="email" {...register('email')} />}
             </Field>
             <Field label="Phone (optional)" error={errors.phone?.message}>
@@ -198,56 +175,35 @@ export function UserFormDialog({
             </Field>
 
             {variant === 'admin' && (
-              <>
-                <Field label="Role" error={errors.role?.message}>
-                  {(p) => (
-                    <Controller
-                      control={control}
-                      name="role"
-                      render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger {...p}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="supervisor">Supervisor</SelectItem>
-                            <SelectItem value="employee">Employee</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  )}
-                </Field>
-                <Field label="Department" error={errors.department_id?.message}>
-                  {(p) => (
-                    <Controller
-                      control={control}
-                      name="department_id"
-                      render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange} disabled={departments.isLoading}>
-                          <SelectTrigger {...p}>
-                            <SelectValue placeholder={departments.isLoading ? 'Loading…' : 'Select department'} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {departments.data?.map((d) => (
-                              <SelectItem key={d.id} value={String(d.id)}>
-                                {d.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  )}
-                </Field>
-              </>
+              <Field label="Section" error={errors.department_id?.message}>
+                {(p) => (
+                  <Controller
+                    control={control}
+                    name="department_id"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange} disabled={departments.isLoading}>
+                        <SelectTrigger {...p}>
+                          <SelectValue placeholder={departments.isLoading ? 'Loading…' : 'Select section'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departments.data?.map((d) => (
+                            <SelectItem key={d.id} value={String(d.id)}>
+                              {d.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                )}
+              </Field>
             )}
 
             <Field label="Designation (optional)" error={errors.designation?.message}>
               {(p) => <Input {...p} autoComplete="off" {...register('designation')} />}
             </Field>
 
-            {showEmployeeFields && (
+            {variant === 'supervisor' && (
               <>
                 <Field label="Employee code (optional)" error={errors.employee_code?.message}>
                   {(p) => <Input {...p} autoComplete="off" {...register('employee_code')} />}

@@ -1,3 +1,9 @@
+"""User management, split by responsibility.
+
+* Admin manages **supervisors** (and, in a later phase, the CCTV system). Admins never see or change employees.
+* Supervisors manage the **employees of their own department**.
+"""
+
 import uuid
 from typing import Any, Literal
 
@@ -14,7 +20,7 @@ from app.models import (
     UserRole,
     UserStatus,
 )
-from app.schemas.user import EmployeeCreate, EmployeeUpdate, UserCreate, UserUpdate
+from app.schemas.user import EmployeeCreate, EmployeeUpdate, SupervisorCreate, SupervisorUpdate
 from app.services import audit_service
 from app.services.audit_service import AuditAction
 from app.services.auth_service import revoke_all_sessions
@@ -31,7 +37,7 @@ _SORT_COLUMNS = {
     "last_login_at": User.last_login_at,
 }
 
-_PROFILE_FIELDS = ("designation", "shift", "assigned_area", "employee_code")
+_EMPLOYEE_FIELDS = ("designation", "shift", "assigned_area", "employee_code")
 
 
 # --------------------------------------------------------------------------- queries
@@ -90,7 +96,7 @@ async def list_users(
     return users, total
 
 
-# --------------------------------------------------------------------------- validation helpers
+# --------------------------------------------------------------------------- shared helpers
 
 
 async def _ensure_email_free(db: AsyncSession, email: str, exclude_id: uuid.UUID | None = None) -> None:
@@ -120,28 +126,6 @@ async def _ensure_department(db: AsyncSession, department_id: int) -> Department
     return dept
 
 
-async def _ensure_supervisor(db: AsyncSession, supervisor_id: uuid.UUID | None, department_id: int) -> None:
-    if supervisor_id is None:
-        return
-    profile = await db.get(SupervisorProfile, supervisor_id)
-    sup = await db.get(User, supervisor_id)
-    if profile is None or sup is None or sup.status == UserStatus.removed or profile.department_id != department_id:
-        raise BadRequest("Supervisor must be an active supervisor of the same department.", "INVALID_SUPERVISOR")
-
-
-def _supervisor_department(actor: User) -> int:
-    if actor.supervisor_profile is None:
-        raise Forbidden("Your supervisor profile has no department assigned.")
-    return actor.supervisor_profile.department_id
-
-
-def _ensure_not_self_or_admin(actor: User, target: User) -> None:
-    if target.id == actor.id:
-        raise BadRequest("You cannot change your own account here.", "SELF_ACTION")
-    if target.role == UserRole.admin:
-        raise BadRequest("Administrator accounts cannot be changed here.", "ADMIN_PROTECTED")
-
-
 def _set_password(user: User, password: str) -> None:
     user.password_hash = hash_password(password)
     user.password_changed_at = utcnow()
@@ -149,55 +133,55 @@ def _set_password(user: User, password: str) -> None:
     user.locked_until = None
 
 
-# --------------------------------------------------------------------------- admin operations
+async def _reload(db: AsyncSession, user_id: uuid.UUID) -> User:
+    user = await get_user(db, user_id)
+    assert user is not None
+    return user
 
 
-async def create_user(db: AsyncSession, actor: User, data: UserCreate, ip: str | None) -> User:
+# --------------------------------------------------------------------------- admin: supervisors only
+
+
+async def list_supervisors(db: AsyncSession, **filters: Any) -> tuple[list[User], int]:
+    return await list_users(db, role=UserRole.supervisor, **filters)
+
+
+async def get_supervisor(db: AsyncSession, user_id: uuid.UUID) -> User:
+    """404 for anything that is not a supervisor, so admins cannot reach employee or admin records."""
+    user = await get_user(db, user_id)
+    if user is None or user.role != UserRole.supervisor:
+        raise NotFound("Supervisor not found.")
+    return user
+
+
+async def create_supervisor(db: AsyncSession, actor: User, data: SupervisorCreate, ip: str | None) -> User:
     await _ensure_email_free(db, data.email)
     dept = await _ensure_department(db, data.department_id)
-    role = UserRole(data.role)
-
     user = User(
         id=uuid.uuid4(),
         email=data.email,
         full_name=data.full_name,
         phone=data.phone,
-        role=role,
+        role=UserRole.supervisor,
         status=UserStatus.active,
         password_hash=hash_password(data.password),
         created_by_id=actor.id,
+        supervisor_profile=SupervisorProfile(department_id=dept.id, designation=data.designation),
     )
-    if role == UserRole.supervisor:
-        user.supervisor_profile = SupervisorProfile(department_id=dept.id, designation=data.designation)
-    else:
-        await _ensure_employee_code_free(db, data.employee_code)
-        await _ensure_supervisor(db, data.supervisor_id, dept.id)
-        user.employee_profile = EmployeeProfile(
-            department_id=dept.id,
-            supervisor_id=data.supervisor_id,
-            designation=data.designation,
-            shift=data.shift,
-            assigned_area=data.assigned_area,
-            employee_code=data.employee_code or None,
-        )
     db.add(user)
     await db.flush()
     await audit_service.record(
         db, AuditAction.USER_CREATED, actor=actor, entity_type="user", entity_id=user.id,
-        details={"email": user.email, "role": role.value, "department": dept.code}, ip=ip,
+        details={"email": user.email, "role": "supervisor", "department": dept.code}, ip=ip,
     )
     await db.commit()
-    return await get_user(db, user.id)  # type: ignore[return-value]
+    return await _reload(db, user.id)
 
 
-async def update_user(
-    db: AsyncSession, actor: User, user_id: uuid.UUID, data: UserUpdate, ip: str | None
+async def update_supervisor(
+    db: AsyncSession, actor: User, user_id: uuid.UUID, data: SupervisorUpdate, ip: str | None
 ) -> User:
-    target = await get_user(db, user_id)
-    if target is None:
-        raise NotFound("User not found.")
-    _ensure_not_self_or_admin(actor, target)
-
+    target = await get_supervisor(db, user_id)
     fields = data.model_fields_set
     changed: list[str] = []
 
@@ -212,41 +196,19 @@ async def update_user(
         target.phone = data.phone
         changed.append("phone")
 
-    current_dept_id = target.department.id if target.department else None
-    new_dept_id = data.department_id if "department_id" in fields and data.department_id else current_dept_id
-    if new_dept_id is None:
-        raise BadRequest("A department is required.", "INVALID_DEPARTMENT")
-    await _ensure_department(db, new_dept_id)
-
-    old_role = target.role
-    new_role = UserRole(data.role) if "role" in fields and data.role else old_role
-
-    if new_role != old_role:
-        await _change_role(db, target, new_role, new_dept_id, data)
-        await audit_service.record(
-            db, AuditAction.USER_ROLE_CHANGED, actor=actor, entity_type="user", entity_id=target.id,
-            details={"from": old_role.value, "to": new_role.value}, ip=ip,
+    sp = target.supervisor_profile
+    assert sp is not None
+    if "department_id" in fields and data.department_id and data.department_id != sp.department_id:
+        await _ensure_department(db, data.department_id)
+        # The supervisor leaves their old section: employees stop pointing at them as their supervisor.
+        await db.execute(
+            update(EmployeeProfile).where(EmployeeProfile.supervisor_id == target.id).values(supervisor_id=None)
         )
-    elif new_role == UserRole.supervisor and target.supervisor_profile:
-        sp = target.supervisor_profile
-        if new_dept_id != sp.department_id:
-            await _detach_supervised_employees(db, target.id)
-            sp.department_id = new_dept_id
-            changed.append("department")
-        if "designation" in fields and data.designation != sp.designation:
-            sp.designation = data.designation
-            changed.append("designation")
-    elif new_role == UserRole.employee and target.employee_profile:
-        ep = target.employee_profile
-        if new_dept_id != ep.department_id:
-            ep.department_id = new_dept_id
-            ep.supervisor_id = None
-            changed.append("department")
-        changed += await _apply_employee_fields(db, target, data, fields)
-        if "supervisor_id" in fields and data.supervisor_id != ep.supervisor_id:
-            await _ensure_supervisor(db, data.supervisor_id, new_dept_id)
-            ep.supervisor_id = data.supervisor_id
-            changed.append("supervisor")
+        sp.department_id = data.department_id
+        changed.append("department")
+    if "designation" in fields and data.designation != sp.designation:
+        sp.designation = data.designation
+        changed.append("designation")
 
     if "password" in fields and data.password:
         _set_password(target, data.password)
@@ -259,72 +221,13 @@ async def update_user(
             details={"fields": changed}, ip=ip,
         )
     await db.commit()
-    return await get_user(db, target.id)  # type: ignore[return-value]
+    return await _reload(db, target.id)
 
 
-async def _detach_supervised_employees(db: AsyncSession, supervisor_id: uuid.UUID) -> None:
-    await db.execute(
-        update(EmployeeProfile).where(EmployeeProfile.supervisor_id == supervisor_id).values(supervisor_id=None)
-    )
-
-
-async def _change_role(
-    db: AsyncSession, target: User, new_role: UserRole, dept_id: int, data: UserUpdate
-) -> None:
-    fields = data.model_fields_set
-    if new_role == UserRole.supervisor:
-        designation = data.designation if "designation" in fields else (
-            target.employee_profile.designation if target.employee_profile else None
-        )
-        target.employee_profile = None
-        await db.flush()
-        target.supervisor_profile = SupervisorProfile(department_id=dept_id, designation=designation)
-    else:
-        designation = data.designation if "designation" in fields else (
-            target.supervisor_profile.designation if target.supervisor_profile else None
-        )
-        await _detach_supervised_employees(db, target.id)
-        target.supervisor_profile = None
-        await db.flush()
-        await _ensure_employee_code_free(db, data.employee_code, exclude_id=target.id)
-        await _ensure_supervisor(db, data.supervisor_id, dept_id)
-        target.employee_profile = EmployeeProfile(
-            department_id=dept_id,
-            supervisor_id=data.supervisor_id,
-            designation=designation,
-            shift=data.shift,
-            assigned_area=data.assigned_area,
-            employee_code=data.employee_code or None,
-        )
-    target.role = new_role
-
-
-async def _apply_employee_fields(
-    db: AsyncSession, target: User, data: UserUpdate | EmployeeUpdate, fields: set[str]
-) -> list[str]:
-    ep = target.employee_profile
-    assert ep is not None
-    changed: list[str] = []
-    for name in _PROFILE_FIELDS:
-        if name not in fields:
-            continue
-        value = getattr(data, name) or None
-        if value == getattr(ep, name):
-            continue
-        if name == "employee_code":
-            await _ensure_employee_code_free(db, value, exclude_id=target.id)
-        setattr(ep, name, value)
-        changed.append(name)
-    return changed
-
-
-async def set_status(
+async def set_supervisor_status(
     db: AsyncSession, actor: User, user_id: uuid.UUID, status: UserStatus, ip: str | None
 ) -> User:
-    target = await get_user(db, user_id)
-    if target is None:
-        raise NotFound("User not found.")
-    _ensure_not_self_or_admin(actor, target)
+    target = await get_supervisor(db, user_id)
     if target.status != status:
         target.status = status
         if status != UserStatus.active:
@@ -332,23 +235,31 @@ async def set_status(
         action = AuditAction.USER_ENABLED if status == UserStatus.active else AuditAction.USER_DISABLED
         await audit_service.record(db, action, actor=actor, entity_type="user", entity_id=target.id, ip=ip)
         await db.commit()
-    return await get_user(db, target.id)  # type: ignore[return-value]
+    return await _reload(db, target.id)
 
 
-async def unlock(db: AsyncSession, actor: User, user_id: uuid.UUID, ip: str | None) -> User:
-    target = await get_user(db, user_id)
-    if target is None:
-        raise NotFound("User not found.")
+async def unlock_supervisor(db: AsyncSession, actor: User, user_id: uuid.UUID, ip: str | None) -> User:
+    target = await get_supervisor(db, user_id)
+    return await _unlock(db, actor, target, ip)
+
+
+async def _unlock(db: AsyncSession, actor: User, target: User, ip: str | None) -> User:
     target.locked_until = None
     target.failed_login_attempts = 0
     await audit_service.record(
         db, AuditAction.USER_UNLOCKED, actor=actor, entity_type="user", entity_id=target.id, ip=ip
     )
     await db.commit()
-    return await get_user(db, target.id)  # type: ignore[return-value]
+    return await _reload(db, target.id)
 
 
-# --------------------------------------------------------------------------- supervisor operations
+# --------------------------------------------------------------------------- supervisor: own department's employees
+
+
+def _supervisor_department(actor: User) -> int:
+    if actor.supervisor_profile is None:
+        raise Forbidden("Your supervisor profile has no department assigned.")
+    return actor.supervisor_profile.department_id
 
 
 async def list_department_employees(
@@ -377,13 +288,36 @@ async def get_department_employee(db: AsyncSession, actor: User, user_id: uuid.U
 async def create_department_employee(
     db: AsyncSession, actor: User, data: EmployeeCreate, ip: str | None
 ) -> User:
-    payload = UserCreate(
-        **data.model_dump(),
-        role="employee",
-        department_id=_supervisor_department(actor),
-        supervisor_id=actor.id,
+    dept_id = _supervisor_department(actor)
+    dept = await _ensure_department(db, dept_id)
+    await _ensure_email_free(db, data.email)
+    await _ensure_employee_code_free(db, data.employee_code)
+    user = User(
+        id=uuid.uuid4(),
+        email=data.email,
+        full_name=data.full_name,
+        phone=data.phone,
+        role=UserRole.employee,
+        status=UserStatus.active,
+        password_hash=hash_password(data.password),
+        created_by_id=actor.id,
+        employee_profile=EmployeeProfile(
+            department_id=dept.id,
+            supervisor_id=actor.id,
+            designation=data.designation,
+            shift=data.shift,
+            assigned_area=data.assigned_area,
+            employee_code=data.employee_code or None,
+        ),
     )
-    return await create_user(db, actor, payload, ip)
+    db.add(user)
+    await db.flush()
+    await audit_service.record(
+        db, AuditAction.USER_CREATED, actor=actor, entity_type="user", entity_id=user.id,
+        details={"email": user.email, "role": "employee", "department": dept.code}, ip=ip,
+    )
+    await db.commit()
+    return await _reload(db, user.id)
 
 
 async def update_department_employee(
@@ -403,7 +337,20 @@ async def update_department_employee(
     if "phone" in fields and data.phone != target.phone:
         target.phone = data.phone
         changed.append("phone")
-    changed += await _apply_employee_fields(db, target, data, fields)
+
+    ep = target.employee_profile
+    assert ep is not None
+    for name in _EMPLOYEE_FIELDS:
+        if name not in fields:
+            continue
+        value = getattr(data, name) or None
+        if value == getattr(ep, name):
+            continue
+        if name == "employee_code":
+            await _ensure_employee_code_free(db, value, exclude_id=target.id)
+        setattr(ep, name, value)
+        changed.append(name)
+
     if "password" in fields and data.password:
         _set_password(target, data.password)
         await revoke_all_sessions(db, target.id)
@@ -424,11 +371,16 @@ async def update_department_employee(
         await audit_service.record(db, action, actor=actor, entity_type="user", entity_id=target.id, ip=ip)
 
     await db.commit()
-    return await get_user(db, target.id)  # type: ignore[return-value]
+    return await _reload(db, target.id)
+
+
+async def unlock_department_employee(db: AsyncSession, actor: User, user_id: uuid.UUID, ip: str | None) -> User:
+    target = await get_department_employee(db, actor, user_id)
+    return await _unlock(db, actor, target, ip)
 
 
 async def remove_department_employee(db: AsyncSession, actor: User, user_id: uuid.UUID, ip: str | None) -> None:
-    """Soft delete: keeps the row for audit history and future violation records."""
+    """Soft delete: keeps the row for audit history and penalty records."""
     target = await get_department_employee(db, actor, user_id)
     target.status = UserStatus.removed
     await revoke_all_sessions(db, target.id)

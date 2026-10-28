@@ -1,10 +1,13 @@
-import { Bell, BellRing, ClipboardCheck, History, MapPin, MoonStar, ScrollText, Scale, ShieldCheck, Sun, Sunset, UserCircle } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Bell, BellRing, ClipboardCheck, History, MapPin, MoonStar, ScrollText, Scale, ShieldAlert, ShieldCheck, Sun, Sunset, UserCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { DashHero, heroName } from '@/components/dash/DashHero'
 import { SectionChip } from '@/components/dash/sections'
 import { SelfCheck } from '@/components/dash/SelfCheck'
 import { SoonCard } from '@/components/dash/SoonCard'
+import { SeverityBadge } from '@/components/penalty/PenaltyBadges'
 import { StatCard } from '@/components/dash/StatCard'
+import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { greeting, timeAgo, todayLabel } from '@/lib/format'
 import { Reveal } from '@/pages/landing/Reveal'
@@ -21,7 +24,10 @@ const SHIFT_ICON = { morning: Sun, evening: Sunset, night: MoonStar } as const
 
 export function EmployeeDashboard() {
   const { user } = useAuth()
+  const penalties = useQuery({ queryKey: ['my-penalties', 'dash'], queryFn: () => api.penalties.mine({ page_size: 1 }) })
   if (!user) return null
+  const penaltyCount = penalties.data?.total ?? 0
+  const latest = penalties.data?.items[0]
   const firstName = user.full_name.split(' ')[0] ?? ''
   const ShiftIcon = user.shift ? SHIFT_ICON[user.shift] : Sun
 
@@ -42,18 +48,36 @@ export function EmployeeDashboard() {
           </>
         }
         aside={
-          <div className="glass-navy relative w-full max-w-xs overflow-hidden rounded-2xl p-5 lg:w-72">
+          <Link to="/employee/penalties" className="glass-navy relative block w-full max-w-xs overflow-hidden rounded-2xl p-5 transition-colors hover:bg-white/10 lg:w-72">
             <div className="teal-glow pointer-events-none absolute -right-10 -top-10 size-40" aria-hidden />
             <div className="relative flex items-start gap-4">
               <span className="float flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[hsl(190_80%_42%/0.2)] text-[hsl(190_90%_72%)] shadow-[0_0_30px_-4px_hsl(190_90%_55%)]">
-                <ShieldCheck className="size-8" aria-hidden />
+                {penaltyCount === 0 ? <ShieldCheck className="size-8" aria-hidden /> : <ShieldAlert className="size-8" aria-hidden />}
               </span>
               <div>
-                <p className="font-semibold">No violations on record</p>
-                <p className="mt-1 text-xs text-[hsl(213_26%_78%)]">Anything flagged about you will appear here, with the evidence.</p>
+                {penalties.isPending ? (
+                  <p className="font-semibold">Checking your record…</p>
+                ) : penaltyCount === 0 ? (
+                  <>
+                    <p className="font-semibold">Clean record</p>
+                    <p className="mt-1 text-xs text-[hsl(213_26%_78%)]">No penalties have been issued to you.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">
+                      {penaltyCount} {penaltyCount === 1 ? 'penalty' : 'penalties'} on record
+                    </p>
+                    {latest && (
+                      <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[hsl(213_26%_78%)]">
+                        Latest: <SeverityBadge severity={latest.severity} /> {latest.reason_label}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-[hsl(190_75%_72%)]">View details →</p>
+                  </>
+                )}
               </div>
             </div>
-          </div>
+          </Link>
         }
       />
 
@@ -102,8 +126,19 @@ export function EmployeeDashboard() {
         </Reveal>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Reveal>
+          <Link to="/employee/penalties" className="block h-full rounded-2xl">
+            <SpotlightCard tilt={4} className="h-full rounded-2xl border bg-card p-5">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-[hsl(352_60%_48%/0.16)] text-[hsl(352_60%_48%)]">
+                <ShieldAlert className="size-5" aria-hidden />
+              </span>
+              <h3 className="mt-4 font-semibold">My penalties</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Every penalty issued to you, with the details. →</p>
+            </SpotlightCard>
+          </Link>
+        </Reveal>
+        <Reveal delay={80}>
           <Link to="/employee/profile" className="block h-full rounded-2xl">
             <SpotlightCard tilt={4} className="h-full rounded-2xl border bg-card p-5">
               <span className="flex size-10 items-center justify-center rounded-xl bg-[hsl(190_80%_42%/0.16)] text-[hsl(190_80%_42%)]">
@@ -118,7 +153,7 @@ export function EmployeeDashboard() {
           <SoonCard icon={Bell} title="My alerts" text="Be told the moment something involving you is flagged." phase="Phase 5" />
         </Reveal>
         <Reveal delay={160}>
-          <SoonCard icon={ScrollText} title="My history and SOPs" text="Your past decisions and the procedures for your section." phase="Phase 3 and 7" />
+          <SoonCard icon={ScrollText} title="SOPs for my section" text="The procedures you are checked against." phase="Phase 3" />
         </Reveal>
       </div>
     </>

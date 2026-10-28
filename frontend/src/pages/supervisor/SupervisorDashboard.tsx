@@ -1,17 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
-import { Bell, ClipboardCheck, FileBarChart, Moon, Sun, Sunset, UserCheck, UserPlus, UserX, Users } from 'lucide-react'
+import { Bell, ClipboardCheck, FileBarChart, Gavel, Moon, Sun, Sunset, UserCheck, UserPlus, UserX, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DashHero, heroName } from '@/components/dash/DashHero'
 import { SectionChip } from '@/components/dash/sections'
 import { SelfCheck } from '@/components/dash/SelfCheck'
+import { EmailStatusBadge, SeverityBadge } from '@/components/penalty/PenaltyBadges'
 import { SoonCard } from '@/components/dash/SoonCard'
 import { StatCard } from '@/components/dash/StatCard'
 import { EmptyState } from '@/components/StateViews'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { greeting, todayLabel } from '@/lib/format'
+import { greeting, timeAgo, todayLabel } from '@/lib/format'
 import type { User } from '@/lib/types'
 import { cn, initials } from '@/lib/utils'
 import { Reveal } from '@/pages/landing/Reveal'
@@ -54,13 +55,16 @@ function ShiftBars({ team }: { team: User[] }) {
 
 export function SupervisorDashboard() {
   const { user } = useAuth()
-  const team = useQuery({ queryKey: ['dash-team'], queryFn: () => api.employees.list({ page_size: 100, sort: 'full_name', order: 'asc' }) })
+  const team = useQuery({ queryKey: ['dash', 'team'], queryFn: () => api.employees.list({ page_size: 100, sort: 'full_name', order: 'asc' }) })
+  const penalties = useQuery({
+    queryKey: ['dash', 'penalties'],
+    queryFn: () => api.penalties.list({ page_size: 5 }),
+  })
   if (!user) return null
   const firstName = user.full_name.split(' ')[0] ?? ''
   const all = team.data?.items ?? []
   const activeTeam = all.filter((u) => u.status === 'active')
   const disabled = all.filter((u) => u.status === 'disabled').length
-  const shiftsCovered = new Set(activeTeam.map((u) => u.shift).filter(Boolean)).size
 
   return (
     <>
@@ -70,7 +74,10 @@ export function SupervisorDashboard() {
         subtitle="Your team and your section at a glance."
         actions={
           <>
-            <Link to="/supervisor/employees?new=1" className="beam-btn inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-semibold">
+            <Link to="/supervisor/penalties?new=1" className="beam-btn inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-semibold">
+              <Gavel className="size-4" aria-hidden /> Issue penalty
+            </Link>
+            <Link to="/supervisor/employees?new=1" className="glass-navy inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-semibold transition-colors hover:bg-white/10">
               <UserPlus className="size-4" aria-hidden /> Add employee
             </Link>
             <Link to="/supervisor/employees" className="glass-navy inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-semibold transition-colors hover:bg-white/10">
@@ -85,11 +92,11 @@ export function SupervisorDashboard() {
         {[
           { icon: Users, label: 'Team members', value: activeTeam.length, hint: 'Active in your section', tone: 'teal', to: '/supervisor/employees' },
           { icon: UserCheck, label: 'On a shift', value: activeTeam.filter((u) => u.shift).length, hint: 'Have a shift assigned', tone: 'steel', to: '/supervisor/employees' },
-          { icon: Sun, label: 'Shifts covered', value: shiftsCovered, hint: 'Morning, evening, night', tone: 'amber', to: undefined },
+          { icon: Gavel, label: 'Penalties issued', value: penalties.data?.total ?? 0, hint: 'In your section, all time', tone: 'maroon', to: '/supervisor/penalties' },
           { icon: UserX, label: 'Disabled', value: disabled, hint: 'Cannot sign in', tone: 'danger', to: '/supervisor/employees' },
         ].map((c, i) => (
           <Reveal key={c.label} variant="zoom" delay={i * 70}>
-            <StatCard icon={c.icon} label={c.label} value={c.value} loading={team.isPending} hint={c.hint} tone={c.tone as 'teal'} {...(c.to ? { to: c.to } : {})} />
+            <StatCard icon={c.icon} label={c.label} value={c.value} loading={c.label === 'Penalties issued' ? penalties.isPending : team.isPending} hint={c.hint} tone={c.tone as 'teal'} {...(c.to ? { to: c.to } : {})} />
           </Reveal>
         ))}
       </div>
@@ -132,6 +139,46 @@ export function SupervisorDashboard() {
       </div>
 
       <Reveal>
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Recent penalties</h2>
+            <Link to="/supervisor/penalties" className="text-sm font-medium text-brand-teal hover:underline dark:text-[hsl(190_80%_68%)]">
+              See all →
+            </Link>
+          </div>
+          {penalties.isPending ? (
+            <Skeleton className="mt-4 h-28 w-full" />
+          ) : (penalties.data?.items.length ?? 0) === 0 ? (
+            <EmptyState
+              icon={<Gavel className="size-6" />}
+              title="No penalties issued yet"
+              description="Review an employee from the Employees page, or issue a penalty here. They are emailed automatically."
+              action={
+                <Link to="/supervisor/penalties?new=1" className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                  <Gavel className="size-4" aria-hidden /> Issue penalty
+                </Link>
+              }
+              className="py-8"
+            />
+          ) : (
+            <ul className="mt-3 divide-y">
+              {penalties.data?.items.map((p) => (
+                <li key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{initials(p.employee.full_name)}</span>
+                  <div className="min-w-0 flex-1 basis-44">
+                    <p className="truncate text-sm font-medium">{p.employee.full_name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{p.reason_label} · {p.action_label} · {timeAgo(p.created_at)}</p>
+                  </div>
+                  <SeverityBadge severity={p.severity} />
+                  <EmailStatusBadge status={p.email_status} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Reveal>
+
+      <Reveal>
         <div className="rounded-2xl border bg-card p-5 sm:p-6">
           <SelfCheck userId={user.id} department={user.department} title="Section walk-through" />
         </div>
@@ -139,7 +186,7 @@ export function SupervisorDashboard() {
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
         <Reveal><SoonCard icon={Bell} title="Live alerts" text="Real-time violation alerts from your section's cameras." phase="Phase 5" /></Reveal>
-        <Reveal delay={80}><SoonCard icon={ClipboardCheck} title="Penalty review" text="Review evidence, then approve, modify or waive." phase="Phase 7" /></Reveal>
+        <Reveal delay={80}><SoonCard icon={ClipboardCheck} title="Evidence review" text="Open the camera snapshot behind a violation before you decide." phase="Phase 7" /></Reveal>
         <Reveal delay={160}><SoonCard icon={FileBarChart} title="Reports" text="Compliance summaries and exports for your section." phase="Phase 7" /></Reveal>
       </div>
     </>

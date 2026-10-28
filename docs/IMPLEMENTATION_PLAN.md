@@ -11,7 +11,7 @@ Legend: `[x]` done · `[ ]` to do · `[~]` partially done / deferred
 
 Goal: two independent apps (`backend/`, `frontend/`) plus a root `docker-compose.yml` that starts the dev stack.
 
-- [x] Root `docker-compose.yml`: `db` (pgvector/pgvector:pg16, named volume, healthcheck), `backend`, `adminer`, `mailpit`
+- [x] Root `docker-compose.yml`: `db` (pgvector/pgvector:pg16, named volume, healthcheck), `backend`, `adminer` (Mailpit was removed; email uses Gmail SMTP)
 - [x] Root `.gitignore`, `README.md` with run steps
 - [x] `backend/`: Dockerfile (Python 3.11), `requirements.txt`, `requirements-dev.txt`, `.env.example`
 - [x] Backend skeleton: `app/core` (settings, security, errors, deps), `app/db` (async engine/session), routers → services → models
@@ -49,9 +49,9 @@ Goal: two independent apps (`backend/`, `frontend/`) plus a root `docker-compose
 - [x] Lockout: `LOGIN_MAX_ATTEMPTS` (5) failures → locked for `LOGIN_LOCKOUT_MINUTES` (15)
 - [x] Distinct error codes: `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `ACCOUNT_DISABLED` (SSD UC-01)
 - [x] `POST /auth/forgot-password` (always 202, no account enumeration) + `POST /auth/reset-password` (single-use, expiring, hashed token; revokes all sessions)
-- [x] Email via SMTP → Mailpit in dev
+- [x] Email via Gmail SMTP (App Password); a clear "not configured" state when credentials are missing
 - [x] `require_role(...)` dependency on every protected endpoint (403 `FORBIDDEN` for wrong role)
-- [x] Admin: `GET/POST /users`, `GET/PATCH /users/{id}`, `POST /users/{id}/disable`, `POST /users/{id}/enable`, `POST /users/{id}/unlock`
+- [x] Admin (supervisors only): `GET/POST /supervisors`, `GET/PATCH /supervisors/{id}`, `POST /supervisors/{id}/disable|enable|unlock`
 - [x] Supervisor: `GET/POST /employees`, `GET/PATCH/DELETE /employees/{id}` (own department only, soft delete → `status=removed`)
 - [x] `GET /departments`
 - [x] Audit rows for: login success/failure/locked, logout, password reset request/complete, user created/updated, role change, disable/enable, employee removed
@@ -66,13 +66,13 @@ Goal: two independent apps (`backend/`, `frontend/`) plus a root `docker-compose
 - [x] Auth context with silent refresh on load and on 401
 - [x] Route guards (`RequireAuth`, `RequireRole`) + role-based sidebar navigation
 - [x] App shell: collapsible navy sidebar (drawer on mobile), top bar with user menu, logout, light/dark toggle
-- [x] Admin → Users page: search, role/status filters, pagination, create/edit dialog, disable/enable/unlock; cards on mobile
+- [x] Admin → Supervisors page: search, section/status filters, pagination, create/edit dialog, disable/enable/unlock; cards on mobile
 - [x] Supervisor → Employees page: CRUD scoped to their department
 - [x] Employee → My Profile (read-only placeholder)
 - [x] Dashboard placeholders for each role
 - [x] Loading / empty / error states; forms with react-hook-form + zod
 - [~] Responsive check at 360 / 768 / 1280 / 1536 px — layouts are mobile-first (drawer sidebar, cards below `md`, bottom-sheet dialogs) and the app type-checks, builds and serves, but **no one has looked at it in a browser yet**: needs a manual pass at the four widths, in light and dark mode
-- [~] Verified by hand against the running stack: login per role, 403s, supervisor department scoping, refresh cookie, lockout message, reset email arriving in Mailpit, audit chain intact. UI flows (forms, dialogs, tables) not yet exercised in a browser
+- [~] Verified by hand against the running stack: login per role, 403s, supervisor department scoping, refresh cookie, lockout message, reset email flow, audit chain intact. UI flows (forms, dialogs, tables) not yet exercised in a browser
 
 ### Added after first review
 - [x] Independent sessions per browser tab (`X-Tab-Id` header, per-tab refresh cookie name, session hint in `sessionStorage`); tested in the API (2 tests) and in a real browser with two tabs
@@ -85,9 +85,20 @@ Goal: two independent apps (`backend/`, `frontend/`) plus a root `docker-compose
 - [x] Public site v4: interactive background web (canvas network: nodes spring around their home, the cursor pushes them away and lights lines to nearby nodes; pauses off-screen; static under reduced motion), navbar links centred (inline from 1024 px), transparent logo mark with no white box, responsive pass at 360 / 768 / 1024 / 1536 px (tablet demo wall, wider headings)
 - [x] Mobile hero fixed: grid column pinned with `minmax(0,1fr)`, the 3D scene is taken out of layout (absolute) and zooms out on narrow screens so the whole orbit stays in frame
 - [x] Browser history: `/login`, `/forgot-password` and `/reset-password` no longer redirect signed-in users forward (that made Back bounce). Signing in is a normal history step, so Back returns to `/login`, which shows "You're already signed in" with Go to dashboard / Sign in as someone else. After sign-out, Back cannot reopen a dashboard
-- [x] Dashboards rebuilt (admin, supervisor, employee): banner with the interactive web, count-up stat cards that deep-link (`/admin/users?role=...&status=...&new=1`), hoverable donut (people by section), activity tabs, live API status chip, shift-coverage bars, personal pre-shift self-check (kept on the device), "coming next" cards labelled with their phase. Only real data is shown; no invented metrics
+- [x] Dashboards rebuilt (admin, supervisor, employee): banner with the interactive web, count-up stat cards that deep-link (`/admin/supervisors?status=...&new=1`), hoverable donut (people by section), activity tabs, live API status chip, shift-coverage bars, personal pre-shift self-check (kept on the device), "coming next" cards labelled with their phase. Only real data is shown; no invented metrics
 - [x] Stale history entries: Back/Forward onto a page the current role cannot open (an old /admin after signing in as an employee) is skipped instead of showing 403; a deliberate visit to a wrong-role URL still shows 403. Pages restored from the browser back/forward cache are reloaded so they never show the previous user's session (`lib/navDirection.ts`, `routes/NavTracker.tsx`)
 - [~] Still to review by a person: real-GPU smoothness of the 3D hero and the web, the mobile drawer, hover effects, and the app screens (Users / Employees tables and dialogs)
+
+### Role split and penalties (decided after the first review)
+- [x] **Admin = supervisors only** (and later CCTV). `/users` became `/supervisors`; admins get 404 for employee records and 403 on `/employees` and `/penalties`
+- [x] **Supervisor manages employees** in their own department: create, edit, disable, **unlock**, remove (soft delete)
+- [x] **Penalties** (`penalties` table, migration 0002): supervisor reviews an employee's earlier penalties, then issues a penalty (reason valid for the section, severity Low/Medium/High/Critical, action: verbal or written warning, fine in PKR, suspension in days, other, optional notes). Saved and audited (`penalty.issued`) **before** any email is attempted; there is no delete endpoint
+- [x] **Penalty email** to the employee's account address via Gmail SMTP; outcome stored (`sent` / `failed` / `not_configured`), a **Resend** button and a `penalty.email_resent` audit row; delivery errors are never returned by the API
+- [x] **Employee** sees only their own penalties (`GET /penalties/mine`), on a My Penalties page and on their dashboard
+- [x] Mailpit removed from the stack, docs and settings
+- [x] pytest: 103 tests (supervisors, employees incl. unlock and admin exclusion, penalties incl. email failure, resend, validation, role permissions and isolation)
+- [~] **Needs you:** put the sending Gmail address and its App Password in `backend/.env` (`SMTP_USER`, `SMTP_PASSWORD`); until then penalties show "Email not set up"
+- Note: this brings the manual part of Phase 7 forward. Linking penalties to detected violations, SOP clauses and evidence stays in Phase 7.
 
 ### Out of scope for Phase 1
 - Google OAuth (only the schema + disabled button)
