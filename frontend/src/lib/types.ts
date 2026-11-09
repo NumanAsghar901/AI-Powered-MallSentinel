@@ -182,3 +182,53 @@ export const ACTION_LABELS: Record<PenaltyAction, string> = {
   suspension: 'Suspension',
   other: 'Other action',
 }
+
+// ---------------------------------------------------------------------------------------- evidence
+
+export type EvidenceReviewStatus = 'pending' | 'approved' | 'rejected'
+
+export interface DetectionItem {
+  label: string
+  confidence: number
+  box: [number, number, number, number]
+  type?: string
+  color?: string
+}
+
+export interface CctvEvidence {
+  id: string
+  evidence_source: string
+  department: Department
+  employee: PersonRef | null
+  camera_id: string
+  camera_location: string
+  violation_type: string
+  severity: Severity
+  confidence_score: number
+  detection_labels: DetectionItem[]
+  image_url: string
+  cloudinary_public_id: string | null
+  captured_at: string
+  review_status: EvidenceReviewStatus
+  reviewed_by: PersonRef | null
+  reviewed_at: string | null
+  supervisor_remarks: string | null
+  created_at: string
+}
+
+export interface EvidenceListParams {
+  page?: number
+  page_size?: number
+  department_id?: number
+  evidence_source?: string
+  review_status?: EvidenceReviewStatus
+  severity?: Severity
+  camera_id?: string
+  search?: string
+}
+
+export interface EvidenceReviewInput {
+  action: 'approve' | 'reject'
+  remarks?: string
+}
+

@@ -96,8 +96,9 @@ Goal: two independent apps (`backend/`, `frontend/`) plus a root `docker-compose
 - [x] **Penalty email** to the employee's account address via Gmail SMTP; outcome stored (`sent` / `failed` / `not_configured`), a **Resend** button and a `penalty.email_resent` audit row; delivery errors are never returned by the API
 - [x] **Employee** sees only their own penalties (`GET /penalties/mine`), on a My Penalties page and on their dashboard
 - [x] Mailpit removed from the stack, docs and settings
-- [x] pytest: 103 tests (supervisors, employees incl. unlock and admin exclusion, penalties incl. email failure, resend, validation, role permissions and isolation)
-- [~] **Needs you:** put the sending Gmail address and its App Password in `backend/.env` (`SMTP_USER`, `SMTP_PASSWORD`); until then penalties show "Email not set up"
+- [x] Gmail SMTP configured and verified with App Password (penalty notices and password reset)
+- [x] **CCTV Evidence & YOLO Overlays** (`cctv_evidence` table, migration 0003): 30 realistic simulated YOLO detection records (10 Bakery, 10 Meat Shop, 10 Security) with bounding boxes, confidence scores, department-based supervisor review, Cloudinary upload, and audit logging (`evidence.reviewed`)
+- [x] pytest: 109 tests passing in the backend container (Python 3.11)
 - Note: this brings the manual part of Phase 7 forward. Linking penalties to detected violations, SOP clauses and evidence stays in Phase 7.
 
 ### Out of scope for Phase 1

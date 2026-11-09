@@ -1,4 +1,4 @@
-import { Gavel, LayoutDashboard, ShieldAlert, UserCircle, UserCog, Users, type LucideIcon } from 'lucide-react'
+import { Camera, Gavel, LayoutDashboard, ShieldAlert, UserCircle, UserCog, Users, type LucideIcon } from 'lucide-react'
 import type { Role } from '@/lib/types'
 
 export interface NavItem {
@@ -13,9 +13,11 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   admin: [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/admin/supervisors', label: 'Supervisors', icon: UserCog },
+    { to: '/admin/evidence', label: 'CCTV Evidence', icon: Camera },
   ],
   supervisor: [
     { to: '/supervisor', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/supervisor/evidence', label: 'CCTV Evidence', icon: Camera },
     { to: '/supervisor/employees', label: 'Employees', icon: Users },
     { to: '/supervisor/penalties', label: 'Penalties', icon: Gavel },
   ],

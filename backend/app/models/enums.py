@@ -44,3 +44,10 @@ class EmailStatus(str, enum.Enum):
     sent = "sent"
     failed = "failed"
     not_configured = "not_configured"
+
+
+class EvidenceReviewStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+

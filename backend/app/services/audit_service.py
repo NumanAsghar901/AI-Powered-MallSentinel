@@ -40,6 +40,7 @@ class AuditAction:
     USER_REMOVED = "user.removed"
     PENALTY_ISSUED = "penalty.issued"
     PENALTY_EMAIL_RESENT = "penalty.email_resent"
+    EVIDENCE_REVIEWED = "evidence.reviewed"
 
 
 def _canonical(

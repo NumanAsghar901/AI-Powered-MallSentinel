@@ -16,6 +16,7 @@ const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then((m
 const SupervisorsPage = lazy(() =>
   import('@/pages/admin/SupervisorsPage').then((m) => ({ default: m.SupervisorsPage })),
 )
+const EvidencePage = lazy(() => import('@/pages/evidence/EvidencePage').then((m) => ({ default: m.EvidencePage })))
 const PenaltiesPage = lazy(() => import('@/pages/supervisor/PenaltiesPage').then((m) => ({ default: m.PenaltiesPage })))
 const MyPenaltiesPage = lazy(() => import('@/pages/employee/MyPenaltiesPage').then((m) => ({ default: m.MyPenaltiesPage })))
 const SupervisorDashboard = lazy(() =>
@@ -44,9 +45,11 @@ export default function App() {
             <Route element={<RequireRole roles={['admin']} />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/supervisors" element={<SupervisorsPage />} />
+              <Route path="/admin/evidence" element={<EvidencePage />} />
             </Route>
             <Route element={<RequireRole roles={['supervisor']} />}>
               <Route path="/supervisor" element={<SupervisorDashboard />} />
+              <Route path="/supervisor/evidence" element={<EvidencePage />} />
               <Route path="/supervisor/employees" element={<EmployeesPage />} />
               <Route path="/supervisor/penalties" element={<PenaltiesPage />} />
             </Route>

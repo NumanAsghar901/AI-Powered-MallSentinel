@@ -46,6 +46,13 @@ class Settings(BaseSettings):
     SEED_DEMO_PASSWORD: str | None = None
     SEED_DEMO_EMAIL_DOMAIN: str = "demo.mallsentinel.pk"
 
+    # Cloudinary configuration (optional; if omitted, images are stored locally and served via authenticated endpoint)
+    CLOUDINARY_CLOUD_NAME: str | None = None
+    CLOUDINARY_API_KEY: str | None = None
+    CLOUDINARY_API_SECRET: str | None = None
+    CLOUDINARY_URL: str | None = None
+    EVIDENCE_DIR: str = "storage/evidence"
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

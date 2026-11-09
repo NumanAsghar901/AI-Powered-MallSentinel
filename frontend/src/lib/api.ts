@@ -1,7 +1,10 @@
 import type {
+  CctvEvidence,
   Department,
   EmployeeCreateInput,
   EmployeeUpdateInput,
+  EvidenceListParams,
+  EvidenceReviewInput,
   Page,
   TokenResponse,
   Penalty,
@@ -231,5 +234,11 @@ export const api = {
     /** Employee: only their own penalties. */
     mine: (params: Pick<PenaltyListParams, 'page' | 'page_size'>) =>
       request<Page<Penalty>>(`/penalties/mine${buildQuery(params)}`),
+  },
+  evidence: {
+    list: (params: EvidenceListParams) => request<Page<CctvEvidence>>(`/evidence${buildQuery(params)}`),
+    get: (id: string) => request<CctvEvidence>(`/evidence/${id}`),
+    review: (id: string, body: EvidenceReviewInput) => post<CctvEvidence>(`/evidence/${id}/review`, body),
+    imageUrl: (id: string) => `${BASE}/evidence/${id}/image?token=${encodeURIComponent(accessToken ?? '')}`,
   },
 }

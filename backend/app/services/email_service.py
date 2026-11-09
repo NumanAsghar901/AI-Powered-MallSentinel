@@ -31,7 +31,7 @@ async def send_email(to: str, subject: str, text_body: str, html_body: str | Non
         hostname=settings.SMTP_HOST,
         port=settings.SMTP_PORT,
         username=settings.SMTP_USER,
-        password=settings.SMTP_PASSWORD,
+        password=settings.SMTP_PASSWORD.replace(" ", "") if settings.SMTP_PASSWORD else None,
         start_tls=settings.SMTP_STARTTLS,
         timeout=15,
     )
