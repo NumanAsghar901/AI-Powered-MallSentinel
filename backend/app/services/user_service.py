@@ -60,6 +60,42 @@ def _base_query() -> Select[tuple[User]]:
     )
 
 
+AREA_TO_DEPT_CODE: dict[str, str] = {
+    # Bakery
+    "Bakery Prep Table 1": "bakery",
+    "Oven Station South": "bakery",
+    "Pastry Display Counter": "bakery",
+    "Dough Mixer Area": "bakery",
+    "Packaging Line West": "bakery",
+    # Meat Shop
+    "Butcher Block Alpha": "meat_shop",
+    "Cold Storage Carcass Area": "meat_shop",
+    "Meat Grinder Station": "meat_shop",
+    "Bone Saw Cutting Station": "meat_shop",
+    "Meat Packaging Counter": "meat_shop",
+    # Security
+    "Main Mall Entrance Gate A": "security",
+    "Cashier & Vault Perimeter": "security",
+    "Rear Loading Dock & Bay": "security",
+    "North Corridor Turnstiles": "security",
+    "Basement Parking Entry": "security",
+}
+
+
+async def _resolve_target_department(
+    db: AsyncSession, department_id: int | None, assigned_area: str | None
+) -> Department | None:
+    if department_id:
+        dept = await db.get(Department, department_id)
+        if dept:
+            return dept
+    if assigned_area and assigned_area in AREA_TO_DEPT_CODE:
+        code = AREA_TO_DEPT_CODE[assigned_area]
+        stmt = select(Department).where(Department.code == code)
+        return await db.scalar(stmt)
+    return None
+
+
 async def list_users(
     db: AsyncSession,
     *,
@@ -67,6 +103,7 @@ async def list_users(
     role: UserRole | None = None,
     status: UserStatus | None = None,
     department_id: int | None = None,
+    supervisor_actor: User | None = None,
     include_removed: bool = True,
     page: int = 1,
     page_size: int = 20,
@@ -85,7 +122,10 @@ async def list_users(
         stmt = stmt.where(User.status == status)
     elif not include_removed:
         stmt = stmt.where(User.status != UserStatus.removed)
-    if department_id is not None:
+    if supervisor_actor is not None:
+        sup_dept_id = _supervisor_department(supervisor_actor)
+        stmt = stmt.where(or_(_department_id_expr() == sup_dept_id, User.created_by_id == supervisor_actor.id))
+    elif department_id is not None:
         stmt = stmt.where(_department_id_expr() == department_id)
 
     total = await db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
@@ -266,7 +306,7 @@ async def list_department_employees(
     db: AsyncSession, actor: User, **filters: Any
 ) -> tuple[list[User], int]:
     return await list_users(
-        db, role=UserRole.employee, department_id=_supervisor_department(actor), include_removed=False, **filters
+        db, role=UserRole.employee, supervisor_actor=actor, include_removed=False, **filters
     )
 
 
@@ -279,7 +319,7 @@ async def get_department_employee(db: AsyncSession, actor: User, user_id: uuid.U
         or user.role != UserRole.employee
         or user.status == UserStatus.removed
         or user.employee_profile is None
-        or user.employee_profile.department_id != dept_id
+        or (user.employee_profile.department_id != dept_id and user.created_by_id != actor.id)
     ):
         raise NotFound("Employee not found in your department.")
     return user
@@ -288,7 +328,8 @@ async def get_department_employee(db: AsyncSession, actor: User, user_id: uuid.U
 async def create_department_employee(
     db: AsyncSession, actor: User, data: EmployeeCreate, ip: str | None
 ) -> User:
-    dept_id = _supervisor_department(actor)
+    target_dept = await _resolve_target_department(db, data.department_id, data.assigned_area)
+    dept_id = target_dept.id if target_dept else _supervisor_department(actor)
     dept = await _ensure_department(db, dept_id)
     await _ensure_email_free(db, data.email)
     await _ensure_employee_code_free(db, data.employee_code)
@@ -340,6 +381,14 @@ async def update_department_employee(
 
     ep = target.employee_profile
     assert ep is not None
+
+    req_dept_id = data.department_id if "department_id" in fields else None
+    req_area = data.assigned_area if "assigned_area" in fields else None
+    target_dept = await _resolve_target_department(db, req_dept_id, req_area)
+    if target_dept and target_dept.id != ep.department_id:
+        ep.department_id = target_dept.id
+        changed.append("department_id")
+
     for name in _EMPLOYEE_FIELDS:
         if name not in fields:
             continue

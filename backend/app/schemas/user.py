@@ -100,18 +100,20 @@ class SupervisorUpdate(BaseModel):
 
 
 class EmployeeCreate(_ProfileFields):
-    """Supervisor creates an employee in their own department."""
+    """Supervisor creates an employee in their own department (or assigned section)."""
 
     email: NormalizedEmail
     full_name: Name
     phone: Phone | None = None
     password: Password
+    department_id: int | None = None
 
 
 class EmployeeUpdate(_ProfileFields):
     email: NormalizedEmail | None = None
     full_name: Name | None = None
     phone: Phone | None = None
+    department_id: int | None = None
     status: Literal["active", "disabled"] | None = None
     password: Password | None = None
 

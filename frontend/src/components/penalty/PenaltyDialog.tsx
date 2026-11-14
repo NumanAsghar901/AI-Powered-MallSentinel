@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
-import { History } from 'lucide-react'
+import { Camera, History } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
@@ -34,6 +34,7 @@ const schema = z
     amount: z.string(),
     days: z.string(),
     notes: z.string().max(1000, 'Keep notes under 1000 characters'),
+    evidence_id: z.string().optional(),
   })
   .superRefine((v, ctx) => {
     if (v.action === 'fine' && !(Number(v.amount) > 0)) {
@@ -60,6 +61,7 @@ const blank = (employeeId: string): FormValues => ({
   amount: '',
   days: '',
   notes: '',
+  evidence_id: '',
 })
 
 /** Review an employee's record and issue a penalty. The employee is emailed on their account address. */
@@ -102,7 +104,27 @@ export function PenaltyDialog({
 
   const employeeId = useWatch({ control, name: 'employee_id' })
   const action = useWatch({ control, name: 'action' })
+  const evidenceId = useWatch({ control, name: 'evidence_id' })
   const chosen = team.data?.items.find((e) => e.id === employeeId) ?? (employee?.id === employeeId ? employee : undefined)
+
+  // Query CCTV evidence for the department/employee (Only Approved evidences)
+  const evidenceQuery = useQuery({
+    queryKey: ['penalty-cctv-evidence', user?.department?.id, employeeId],
+    queryFn: () =>
+      api.evidence.list({
+        department_id: user?.department?.id,
+        review_status: 'approved',
+        page_size: 50,
+      }),
+    enabled: open && Boolean(user?.department?.id),
+  })
+
+  const relevantEvidences = (evidenceQuery.data?.items ?? []).filter(
+    (ev) =>
+      ev.review_status === 'approved' &&
+      (!employeeId || !ev.employee || ev.employee.id === employeeId)
+  )
+  const selectedEv = (evidenceQuery.data?.items ?? []).find((ev) => ev.id === evidenceId)
 
   // "Review": what has this employee already been penalised for?
   const history = useQuery({
@@ -122,6 +144,7 @@ export function PenaltyDialog({
         ...(v.action === 'fine' ? { amount_pkr: Number(v.amount) } : {}),
         ...(v.action === 'suspension' ? { suspension_days: Number(v.days) } : {}),
         ...(v.notes.trim() ? { notes: v.notes.trim() } : {}),
+        ...(v.evidence_id ? { evidence_id: v.evidence_id } : {}),
       })
       onIssued(penalty)
       onOpenChange(false)
@@ -288,6 +311,59 @@ export function PenaltyDialog({
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground aria-[invalid=true]:border-destructive md:text-sm"
                 placeholder="What happened, and anything they should do next"
                 {...register('notes')}
+              />
+            )}
+          </Field>
+
+          <Field
+            label="Attach Approved CCTV Evidence (Optional)"
+            hint="Only supervisor-approved violations are available to attach to formal penalty notices."
+          >
+            {(p) => (
+              <Controller
+                control={control}
+                name="evidence_id"
+                render={({ field }) => (
+                  <div className="space-y-2">
+                    <Select
+                      value={field.value || 'none'}
+                      onValueChange={(val) => field.onChange(val === 'none' ? '' : val)}
+                      disabled={evidenceQuery.isLoading}
+                    >
+                      <SelectTrigger {...p}>
+                        <SelectValue placeholder={evidenceQuery.isLoading ? 'Loading approved evidence…' : 'Select approved CCTV evidence'} />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-56">
+                        <SelectItem value="none">No CCTV evidence attached</SelectItem>
+                        {relevantEvidences.map((ev) => (
+                          <SelectItem key={ev.id} value={ev.id}>
+                            ✓ [{ev.camera_id}] {ev.violation_type} • {ev.camera_location} ({formatDateTime(ev.captured_at)})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {selectedEv && (
+                      <div className="rounded-xl border bg-black/70 p-3 flex items-center gap-3 overflow-hidden shadow-inner">
+                        <img
+                          src={selectedEv.image_url?.startsWith('http') ? selectedEv.image_url : api.evidence.imageUrl(selectedEv.id)}
+                          alt="CCTV Thumbnail"
+                          className="w-24 h-16 object-cover rounded-lg border border-white/20 shrink-0 bg-black"
+                        />
+                        <div className="text-xs space-y-1 min-w-0">
+                          <div className="font-semibold text-rose-400 truncate flex items-center gap-1.5">
+                            <Camera className="size-3.5 text-cyan-400" />
+                            {selectedEv.violation_type}
+                          </div>
+                          <div className="text-muted-foreground truncate">{selectedEv.camera_id} • {selectedEv.camera_location}</div>
+                          <div className="text-[11px] text-cyan-300 font-mono">
+                            {(selectedEv.confidence_score * 100).toFixed(0)}% AI Detection Conf • Will be attached to email
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               />
             )}
           </Field>

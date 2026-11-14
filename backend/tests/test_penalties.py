@@ -77,8 +77,9 @@ async def test_penalty_is_kept_when_email_fails_and_can_be_resent(client, world,
     assert "penalty.issued" in actions and "penalty.email_resent" in actions
 
 
-async def test_without_gmail_credentials_status_is_not_configured(client, world, sup_h):
-    # no mail fixture: the real sender runs and SMTP_USER / SMTP_PASSWORD are empty in the test environment
+async def test_without_gmail_credentials_status_is_not_configured(client, world, sup_h, monkeypatch):
+    monkeypatch.setattr(email_service.settings, "SMTP_USER", None)
+    monkeypatch.setattr(email_service.settings, "SMTP_PASSWORD", None)
     r = await client.post(f"{API}/penalties", headers=sup_h, json=_body(world))
     assert r.status_code == 201 and r.json()["email_status"] == "not_configured"
 

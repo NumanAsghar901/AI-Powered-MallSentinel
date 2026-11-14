@@ -16,8 +16,8 @@ import type {
   UserListParams,
 } from './types'
 
-const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
-const BASE = `${API_URL}/api/v1`
+const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+const BASE = API_URL ? `${API_URL}/api/v1` : '/api/v1'
 
 export class ApiError extends Error {
   readonly status: number
@@ -86,14 +86,52 @@ function setSessionHint(on: boolean): void {
   }
 }
 
-// The access token lives in memory only; the refresh token is an httpOnly cookie.
-let accessToken: string | null = null
+const TOKEN_STORAGE_KEY = 'ms-access-token'
+const USER_STORAGE_KEY = 'ms-user-profile'
+
+export function getStoredToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function getStoredUser(): User | null {
+  try {
+    const raw = localStorage.getItem(USER_STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as User) : null
+  } catch {
+    return null
+  }
+}
+
+export function setStoredUser(user: User | null): void {
+  try {
+    if (user) localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+    else localStorage.removeItem(USER_STORAGE_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+// The access token is stored in memory and persisted in localStorage for refresh resilience
+let accessToken: string | null = getStoredToken()
 let onSessionLost: (() => void) | null = null
 let refreshInFlight: Promise<TokenResponse | null> | null = null
 
 export function setAccessToken(token: string | null): void {
   accessToken = token
   setSessionHint(token !== null)
+  try {
+    if (token) localStorage.setItem(TOKEN_STORAGE_KEY, token)
+    else {
+      localStorage.removeItem(TOKEN_STORAGE_KEY)
+      localStorage.removeItem(USER_STORAGE_KEY)
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 export function setSessionLostHandler(handler: (() => void) | null): void {

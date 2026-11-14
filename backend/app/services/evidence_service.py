@@ -123,8 +123,8 @@ async def review_evidence(
 
     evidence = await get_evidence(db, actor, evidence_id)
 
-    if actor.role not in (UserRole.supervisor, UserRole.admin):
-        raise Forbidden("Only supervisors or administrators can review evidence.")
+    if actor.role != UserRole.supervisor:
+        raise Forbidden("Only department supervisors are authorized to review evidence.")
 
     prev_status = evidence.review_status.value
     new_status = EvidenceReviewStatus.approved if action == "approve" else EvidenceReviewStatus.rejected

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 
 interface FieldProps {
   label: string
+  rightAction?: ReactNode
   error?: string | undefined
   hint?: string
   children: (props: { id: string; 'aria-invalid': boolean; 'aria-describedby': string | undefined }) => ReactNode
@@ -13,12 +14,15 @@ interface FieldProps {
 }
 
 /** Label + control + inline error, wired together for screen readers. */
-export function Field({ label, error, hint, children, className }: FieldProps) {
+export function Field({ label, rightAction, error, hint, children, className }: FieldProps) {
   const id = useId()
   const describedBy = error ? `${id}-err` : hint ? `${id}-hint` : undefined
   return (
     <div className={cn('space-y-1.5', className)}>
-      <Label htmlFor={id}>{label}</Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label htmlFor={id}>{label}</Label>
+        {rightAction}
+      </div>
       {children({ id, 'aria-invalid': Boolean(error), 'aria-describedby': describedBy })}
       {error ? (
         <p id={`${id}-err`} role="alert" className="text-sm text-destructive">

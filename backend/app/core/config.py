@@ -63,7 +63,7 @@ class Settings(BaseSettings):
 
     @property
     def mail_from(self) -> str:
-        return self.SMTP_FROM or f"MallSentinel <{self.SMTP_USER}>"
+        return self.SMTP_FROM or f"MallSentinel Compliance <{self.SMTP_USER}>"
 
     @property
     def refresh_cookie_path(self) -> str:

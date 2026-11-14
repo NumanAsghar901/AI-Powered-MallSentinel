@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, CheckCircle2, Clock, ExternalLink, ShieldAlert, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, ExternalLink, ShieldAlert, User as UserIcon, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { SectionBadge } from '@/components/Badges'
 import { EvidenceSourceBadge, ReviewStatusBadge } from '@/components/evidence/EvidenceBadges'
@@ -7,6 +7,7 @@ import { SeverityBadge } from '@/components/penalty/PenaltyBadges'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { api, ApiError } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import type { CctvEvidence } from '@/lib/types'
 import { formatDateTime } from '@/lib/utils'
 
@@ -18,6 +19,8 @@ interface Props {
 }
 
 export function EvidenceReviewDialog({ evidence, open, onOpenChange, onSuccess }: Props) {
+  const { user } = useAuth()
+  const isSupervisor = user?.role === 'supervisor'
   const queryClient = useQueryClient()
   const [remarks, setRemarks] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -100,48 +103,59 @@ export function EvidenceReviewDialog({ evidence, open, onOpenChange, onSuccess }
             </div>
           </div>
 
-          {/* Details Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm bg-muted/40 p-4 rounded-lg border">
-            <div>
-              <span className="text-xs text-muted-foreground block mb-1">Department Section</span>
-              <SectionBadge department={evidence.department} />
-            </div>
-
-            <div>
-              <span className="text-xs text-muted-foreground block mb-1">Identified Personnel</span>
-              {evidence.employee ? (
-                <div>
-                  <span className="font-medium text-foreground">{evidence.employee.full_name}</span>
-                  {evidence.employee.employee_code && (
-                    <span className="text-xs text-muted-foreground ml-2">({evidence.employee.employee_code})</span>
-                  )}
-                  <span className="text-xs text-muted-foreground block">{evidence.employee.email}</span>
-                </div>
-              ) : (
-                <span className="text-muted-foreground italic">Unassigned / Unknown Subject</span>
-              )}
-            </div>
-
-            <div>
-              <span className="text-xs text-muted-foreground block mb-1">Detection Confidence</span>
-              <div className="flex items-center gap-2">
-                <div className="w-24 bg-muted rounded-full h-2 overflow-hidden border">
-                  <div
-                    className="bg-brand-teal h-full rounded-full"
-                    style={{ width: `${Math.round(evidence.confidence_score * 100)}%` }}
-                  />
-                </div>
-                <span className="font-mono font-semibold text-xs">
-                  {Math.round(evidence.confidence_score * 100)}% (YOLO Conf: {evidence.confidence_score.toFixed(2)})
-                </span>
+          {/* Details Stack */}
+          <div className="space-y-3 text-sm">
+            {/* Department Section (1 Full Row) */}
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Department Section</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <SectionBadge department={evidence.department} />
+                <span className="text-xs font-mono text-muted-foreground">{evidence.camera_location}</span>
               </div>
             </div>
 
-            <div>
-              <span className="text-xs text-muted-foreground block mb-1">Cloudinary Public ID</span>
-              <span className="font-mono text-xs text-muted-foreground break-all">
-                {evidence.cloudinary_public_id ?? 'mallsentinel/evidence/local'}
-              </span>
+            {/* Identified Personnel (Below Department Section in 1 Complete Row with Full Email) */}
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Identified Personnel</span>
+              {evidence.employee ? (
+                <div className="rounded-md border bg-background/80 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <UserIcon className="h-4 w-4 text-brand-teal shrink-0" aria-hidden />
+                    <span className="font-semibold text-foreground text-sm">{evidence.employee.full_name}</span>
+                    {evidence.employee.employee_code && (
+                      <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground border shrink-0">
+                        {evidence.employee.employee_code}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-foreground font-mono bg-muted/50 px-2.5 py-1 rounded border select-all">
+                    {evidence.employee.email}
+                  </span>
+                </div>
+              ) : (
+                <div className="rounded-md border bg-background/50 px-3 py-2 text-muted-foreground italic text-xs">
+                  Unassigned / Unknown Subject
+                </div>
+              )}
+            </div>
+
+            {/* Detection Confidence (1 Full Row) */}
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Detection Confidence</span>
+              <div className="flex items-center gap-3">
+                <div className="w-36 bg-muted rounded-full h-2.5 overflow-hidden border">
+                  <div
+                    className="bg-brand-teal h-full rounded-full transition-all"
+                    style={{ width: `${Math.round(evidence.confidence_score * 100)}%` }}
+                  />
+                </div>
+                <span className="font-mono font-semibold text-xs text-foreground">
+                  {Math.round(evidence.confidence_score * 100)}%
+                </span>
+                <span className="text-xs font-mono text-muted-foreground">
+                  (YOLOv8 Conf: {evidence.confidence_score.toFixed(2)})
+                </span>
+              </div>
             </div>
           </div>
 
@@ -193,13 +207,21 @@ export function EvidenceReviewDialog({ evidence, open, onOpenChange, onSuccess }
             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
               Supervisor Review & Action Remarks
             </label>
-            <textarea
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              placeholder="Add supervisor notes, explanation, or disciplinary instructions..."
-              rows={3}
-              className="w-full text-sm p-3 rounded-md border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-brand-teal placeholder:text-muted-foreground/60 resize-none"
-            />
+            {isSupervisor ? (
+              <textarea
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                placeholder="Add supervisor notes, explanation, or disciplinary instructions..."
+                rows={3}
+                className="w-full text-sm p-3 rounded-md border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-brand-teal placeholder:text-muted-foreground/60 resize-none"
+              />
+            ) : (
+              <div className="w-full text-sm p-3 rounded-md border bg-muted/40 text-muted-foreground italic">
+                {evidence.supervisor_remarks
+                  ? `Supervisor remark: "${evidence.supervisor_remarks}"`
+                  : 'Review decisions (Approve / Reject) and remarks are reserved for Department Supervisors.'}
+              </div>
+            )}
 
             {error && (
               <div className="flex items-center gap-2 text-rose-500 text-xs bg-rose-500/10 p-2.5 rounded border border-rose-500/20">
@@ -215,27 +237,34 @@ export function EvidenceReviewDialog({ evidence, open, onOpenChange, onSuccess }
             Close
           </Button>
 
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={reviewMutation.isPending}
-              onClick={() => reviewMutation.mutate({ action: 'reject' })}
-              className="text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900/50 dark:hover:bg-rose-950/30"
-            >
-              <XCircle className="h-4 w-4 mr-1.5" /> Reject Violation
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={reviewMutation.isPending}
-              onClick={() => reviewMutation.mutate({ action: 'approve' })}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              <CheckCircle2 className="h-4 w-4 mr-1.5" /> Approve Violation
-            </Button>
-          </div>
+          {isSupervisor ? (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={reviewMutation.isPending}
+                onClick={() => reviewMutation.mutate({ action: 'reject' })}
+                className="text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900/50 dark:hover:bg-rose-950/30"
+              >
+                <XCircle className="h-4 w-4 mr-1.5" /> Reject Violation
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={reviewMutation.isPending}
+                onClick={() => reviewMutation.mutate({ action: 'approve' })}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1.5" /> Approve Violation
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              <span>Review decisions (Approve / Reject) reserved for Supervisors</span>
+            </div>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

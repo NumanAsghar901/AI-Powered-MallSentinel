@@ -286,7 +286,7 @@ export function EvidencePage() {
                       className="h-8 text-xs font-medium hover:bg-brand-teal hover:text-white hover:border-brand-teal transition-colors"
                       onClick={() => openReview(ev)}
                     >
-                      Inspect & Review
+                      {user?.role === 'supervisor' ? 'Inspect & Review' : 'Inspect'}
                     </Button>
                   </div>
                 </div>

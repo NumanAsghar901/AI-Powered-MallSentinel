@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, hasSessionHint, refreshSession, setSessionLostHandler } from './api'
+import { api, getStoredToken, getStoredUser, hasSessionHint, refreshSession, setAccessToken, setSessionLostHandler, setStoredUser } from './api'
 import type { User } from './types'
 
 type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
@@ -16,27 +16,60 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
-  const [user, setUser] = useState<User | null>(null)
-  const [status, setStatus] = useState<AuthStatus>(() => (hasSessionHint() ? 'loading' : 'anonymous'))
+  const initialUser = getStoredUser()
+  const initialToken = getStoredToken()
 
-  // Restore the session from the refresh cookie on first load.
+  const [user, setUser] = useState<User | null>(initialUser)
+  const [status, setStatus] = useState<AuthStatus>(() =>
+    initialUser && initialToken ? 'authenticated' : (hasSessionHint() ? 'loading' : 'anonymous')
+  )
+
+  // Restore or background-refresh the session on load
   useEffect(() => {
-    if (!hasSessionHint()) return // public visitor: nothing to restore
     let cancelled = false
     void refreshSession().then((data) => {
       if (cancelled) return
-      setUser(data?.user ?? null)
-      setStatus(data ? 'authenticated' : 'anonymous')
+      if (data) {
+        setUser(data.user)
+        setStoredUser(data.user)
+        setStatus('authenticated')
+      } else if (!initialUser || !initialToken) {
+        setUser(null)
+        setStoredUser(null)
+        setStatus('anonymous')
+      }
     })
     return () => {
       cancelled = true
     }
   }, [])
 
-  // The API client calls this when a refresh fails mid-session.
+  // Periodically refresh authenticated user's profile so department/section changes reflect live across devices
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    const interval = setInterval(async () => {
+      try {
+        const freshUser = await api.auth.me()
+        setUser((prev) => {
+          if (JSON.stringify(prev) !== JSON.stringify(freshUser)) {
+            setStoredUser(freshUser)
+            return freshUser
+          }
+          return prev
+        })
+      } catch {
+        /* ignore background transient network blips */
+      }
+    }, 4000)
+    return () => clearInterval(interval)
+  }, [status])
+
+  // The API client calls this when a refresh explicitly fails mid-session
   useEffect(() => {
     setSessionLostHandler(() => {
       queryClient.clear()
+      setAccessToken(null)
+      setStoredUser(null)
       setUser(null)
       setStatus('anonymous')
     })
@@ -46,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const data = await api.auth.login(email, password)
     setUser(data.user)
+    setStoredUser(data.user)
     setStatus('authenticated')
     return data.user
   }, [])
@@ -55,6 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await api.auth.logout()
     } finally {
       queryClient.clear()
+      setAccessToken(null)
+      setStoredUser(null)
       setUser(null)
       setStatus('anonymous')
     }

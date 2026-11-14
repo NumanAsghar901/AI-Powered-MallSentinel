@@ -58,6 +58,7 @@ class PenaltyCreate(BaseModel):
     amount_pkr: Annotated[int, Field(gt=0, le=10_000_000)] | None = None
     suspension_days: Annotated[int, Field(gt=0, le=90)] | None = None
     notes: Annotated[str, Field(max_length=1000)] | None = None
+    evidence_id: uuid.UUID | None = None
 
     @model_validator(mode="after")
     def _action_details(self) -> "PenaltyCreate":
@@ -96,6 +97,8 @@ class PenaltyOut(BaseModel):
     amount_pkr: int | None
     suspension_days: int | None
     notes: str | None
+    evidence_id: uuid.UUID | None = None
+    evidence_image_url: str | None = None
     email_status: EmailStatus
     email_sent_at: datetime | None
     created_at: datetime
@@ -119,6 +122,8 @@ class PenaltyOut(BaseModel):
             amount_pkr=p.amount_pkr,
             suspension_days=p.suspension_days,
             notes=p.notes,
+            evidence_id=p.evidence_id,
+            evidence_image_url=p.evidence.image_url if p.evidence else None,
             email_status=p.email_status,
             email_sent_at=p.email_sent_at,
             created_at=p.created_at,

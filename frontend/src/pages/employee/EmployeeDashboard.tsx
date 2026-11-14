@@ -24,12 +24,21 @@ const SHIFT_ICON = { morning: Sun, evening: Sunset, night: MoonStar } as const
 
 export function EmployeeDashboard() {
   const { user } = useAuth()
+  // Dynamic live sync: polls every 3s so supervisor section assignments reflect instantly
+  const profileQuery = useQuery({
+    queryKey: ['me', 'live'],
+    queryFn: api.auth.me,
+    refetchInterval: 3000,
+    refetchOnWindowFocus: true,
+  })
+  const liveUser = profileQuery.data ?? user
+
   const penalties = useQuery({ queryKey: ['my-penalties', 'dash'], queryFn: () => api.penalties.mine({ page_size: 1 }) })
-  if (!user) return null
+  if (!liveUser) return null
   const penaltyCount = penalties.data?.total ?? 0
   const latest = penalties.data?.items[0]
-  const firstName = user.full_name.split(' ')[0] ?? ''
-  const ShiftIcon = user.shift ? SHIFT_ICON[user.shift] : Sun
+  const firstName = liveUser.full_name.split(' ')[0] ?? ''
+  const ShiftIcon = liveUser.shift ? SHIFT_ICON[liveUser.shift] : Sun
 
   return (
     <>
@@ -39,10 +48,15 @@ export function EmployeeDashboard() {
         subtitle="Your section, your shift and your record, all in one place."
         actions={
           <>
-            <SectionChip department={user.department} />
-            {user.shift && (
+            <SectionChip department={liveUser.department} />
+            {liveUser.assigned_area && (
+              <span className="glass-navy inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white shadow-sm">
+                <MapPin className="size-4 text-[hsl(190_80%_70%)]" aria-hidden /> {liveUser.assigned_area}
+              </span>
+            )}
+            {liveUser.shift && (
               <span className="glass-navy inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium capitalize">
-                <ShiftIcon className="size-4 text-[hsl(190_80%_70%)]" aria-hidden /> {user.shift} shift
+                <ShiftIcon className="size-4 text-[hsl(190_80%_70%)]" aria-hidden /> {liveUser.shift} shift
               </span>
             )}
           </>
@@ -83,10 +97,18 @@ export function EmployeeDashboard() {
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { icon: MapPin, label: 'Your section', text: user.department?.name ?? '—', hint: user.assigned_area ?? 'Area not assigned yet', tone: 'teal' },
-          { icon: ShiftIcon, label: 'Shift', text: <span className="capitalize">{user.shift ?? 'Not set'}</span>, hint: user.designation ?? 'No designation set', tone: 'amber' },
-          { icon: UserCircle, label: 'Employee code', text: user.employee_code ?? '—', hint: user.email, tone: 'steel' },
-          { icon: History, label: 'Last sign-in', text: timeAgo(user.last_login_at), hint: 'On this account', tone: 'maroon' },
+          {
+            icon: MapPin,
+            label: 'Your section',
+            text: liveUser.assigned_area || liveUser.department?.name || '—',
+            hint: liveUser.assigned_area && liveUser.department
+              ? `${liveUser.department.name} Department · Assigned Station`
+              : (liveUser.department?.name ? `${liveUser.department.name} Section` : 'Area not assigned yet'),
+            tone: 'teal',
+          },
+          { icon: ShiftIcon, label: 'Shift', text: <span className="capitalize">{liveUser.shift ?? 'Not set'}</span>, hint: liveUser.designation ?? 'No designation set', tone: 'amber' },
+          { icon: UserCircle, label: 'Employee code', text: liveUser.employee_code ?? '—', hint: liveUser.email, tone: 'steel' },
+          { icon: History, label: 'Last sign-in', text: timeAgo(liveUser.last_login_at), hint: 'On this account', tone: 'maroon' },
         ].map((c, i) => (
           <Reveal key={c.label} variant="zoom" delay={i * 70}>
             <StatCard icon={c.icon} label={c.label} text={c.text} hint={c.hint} tone={c.tone as 'teal'} />
@@ -98,7 +120,7 @@ export function EmployeeDashboard() {
         <Reveal variant="left" className="lg:col-span-3">
           <div className="flex h-full items-center rounded-2xl border bg-card p-5 sm:p-6">
             <div className="w-full">
-            <SelfCheck userId={user.id} department={user.department} title="Pre-shift self-check" />
+            <SelfCheck userId={liveUser.id} department={liveUser.department} title="Pre-shift self-check" />
             </div>
           </div>
         </Reveal>

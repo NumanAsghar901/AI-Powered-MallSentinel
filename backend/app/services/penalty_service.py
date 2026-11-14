@@ -28,6 +28,7 @@ async def _load(db: AsyncSession, penalty_id: uuid.UUID) -> Penalty | None:
 
 async def _send_notice(penalty: Penalty) -> None:
     """Sends the email and records the outcome on the penalty (the caller commits)."""
+    ev = penalty.evidence
     notice = PenaltyNotice(
         employee_name=penalty.employee.full_name,
         supervisor_name=penalty.issued_by.full_name,
@@ -37,6 +38,10 @@ async def _send_notice(penalty: Penalty) -> None:
         penalty=describe_action(penalty.action, penalty.amount_pkr, penalty.suspension_days),
         notes=penalty.notes,
         issued_at=penalty.created_at,
+        evidence_image_url=ev.image_url if ev else None,
+        evidence_camera=ev.camera_id if ev else None,
+        evidence_location=ev.camera_location if ev else None,
+        evidence_violation=ev.violation_type if ev else None,
     )
     try:
         await email_service.send_penalty_notice(penalty.employee.email, notice)
@@ -79,6 +84,7 @@ async def create_penalty(db: AsyncSession, actor: User, data: PenaltyCreate, ip:
         employee_id=employee.id,
         issued_by_id=actor.id,
         department_id=dept_id,
+        evidence_id=data.evidence_id,
         reason=data.reason,
         severity=data.severity,
         action=data.action,

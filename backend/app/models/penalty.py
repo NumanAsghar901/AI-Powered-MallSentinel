@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 from app.models.department import Department
 from app.models.enums import EmailStatus, PenaltyAction, PenaltySeverity
+from app.models.evidence import CctvEvidence
 from app.models.user import User, _pg_enum
 
 
@@ -28,6 +29,9 @@ class Penalty(Base):
     employee_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), index=True)
     issued_by_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), index=True)
     department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"), index=True)
+    evidence_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cctv_evidence.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     reason: Mapped[str] = mapped_column(String(40))
     severity: Mapped[PenaltySeverity] = mapped_column(_pg_enum(PenaltySeverity, "penalty_severity"))
@@ -47,3 +51,4 @@ class Penalty(Base):
     employee: Mapped[User] = relationship(foreign_keys=[employee_id], lazy="selectin")
     issued_by: Mapped[User] = relationship(foreign_keys=[issued_by_id], lazy="selectin")
     department: Mapped[Department] = relationship(lazy="selectin")
+    evidence: Mapped[CctvEvidence | None] = relationship(foreign_keys=[evidence_id], lazy="selectin")

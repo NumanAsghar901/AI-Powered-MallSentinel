@@ -32,9 +32,9 @@ async def test_supervisor_lists_only_own_department(client, world, sup_h):
 
 
 async def test_create_employee_is_forced_into_supervisors_department(client, world, sup_h, db):
-    # department_id / role in the body are ignored (not part of the schema)
+    # When no department_id is passed, employee defaults to supervisor's department
     r = await client.post(f"{API}/employees", headers=sup_h,
-                          json=_body(department_id=world.meat.id, role="supervisor", shift="evening"))
+                          json=_body(role="supervisor", shift="evening"))
     assert r.status_code == 201
     body = r.json()
     assert body["role"] == "employee" and body["department"]["code"] == "bakery"
@@ -76,11 +76,11 @@ async def test_update_own_employee(client, world, sup_h):
     assert (await client.patch(f"{API}/employees/{uid}", headers=sup_h, json={"status": "removed"})).status_code == 422
 
 
-async def test_supervisor_cannot_change_role_or_department_via_patch(client, world, sup_h):
+async def test_supervisor_cannot_change_role_via_patch_but_can_update_department(client, world, sup_h):
     uid = world.bakery_emp.id
     r = await client.patch(f"{API}/employees/{uid}", headers=sup_h,
                            json={"role": "supervisor", "department_id": world.meat.id, "full_name": "Still Baker"})
-    assert r.status_code == 200 and r.json()["role"] == "employee" and r.json()["department"]["code"] == "bakery"
+    assert r.status_code == 200 and r.json()["role"] == "employee" and r.json()["department"]["code"] == "meat_shop"
 
 
 async def test_remove_is_soft_delete_hides_and_blocks_login(client, world, sup_h, db):

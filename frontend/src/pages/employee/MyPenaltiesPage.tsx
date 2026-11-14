@@ -1,12 +1,13 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Mail, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { Pagination } from '@/components/Pagination'
 import { SeverityBadge } from '@/components/penalty/PenaltyBadges'
 import { EmptyState, ErrorState } from '@/components/StateViews'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api, ApiError } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import { formatDateTime } from '@/lib/utils'
 import { Reveal } from '@/pages/landing/Reveal'
 
@@ -14,12 +15,22 @@ const PAGE_SIZE = 8
 
 /** An employee only ever sees their own penalties. */
 export function MyPenaltiesPage() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const penalties = useQuery({
     queryKey: ['my-penalties', page],
     queryFn: () => api.penalties.mine({ page, page_size: PAGE_SIZE }),
     placeholderData: keepPreviousData,
   })
+
+  // Clear unread beeping badge on page open
+  useEffect(() => {
+    if (penalties.data && user?.id) {
+      localStorage.setItem(`ms-seen-penalties:${user.id}`, String(penalties.data.total))
+      void queryClient.invalidateQueries({ queryKey: ['unread-penalties', user.id] })
+    }
+  }, [penalties.data, user?.id, queryClient])
 
   return (
     <>
@@ -74,6 +85,22 @@ export function MyPenaltiesPage() {
                   </dl>
                   {p.notes && (
                     <p className="mt-4 whitespace-pre-wrap rounded-xl bg-muted/50 p-3 text-sm">{p.notes}</p>
+                  )}
+                  {p.evidence_image_url && (
+                    <div className="mt-4 rounded-xl border bg-black/40 overflow-hidden">
+                      <div className="px-3 py-1.5 bg-black/60 text-[11px] font-mono text-cyan-400 flex items-center justify-between border-b border-white/10">
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2 rounded-full bg-cyan-400" />
+                          ATTACHED CCTV DETECTION EVIDENCE
+                        </span>
+                        <span className="text-white/60">YOLOv8 Snapshot</span>
+                      </div>
+                      <img
+                        src={p.evidence_image_url}
+                        alt="CCTV Evidence"
+                        className="w-full max-h-64 object-contain bg-black/90"
+                      />
+                    </div>
                   )}
                   {p.email_status === 'sent' && (
                     <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">

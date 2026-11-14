@@ -85,6 +85,7 @@ export function UserTable({ users, variant, sort, order, onSort, renderActions, 
               ) : (
                 <>
                   <th scope="col" className="px-4 py-3 text-left font-medium">Code</th>
+                  <th scope="col" className="px-4 py-3 text-left font-medium">Section / Area</th>
                   <th scope="col" className="px-4 py-3 text-left font-medium">Shift</th>
                 </>
               )}
@@ -113,6 +114,12 @@ export function UserTable({ users, variant, sort, order, onSort, renderActions, 
                 ) : (
                   <>
                     <td className="px-4 py-3 text-muted-foreground">{u.employee_code ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-medium text-foreground">{u.assigned_area || 'Not assigned'}</span>
+                        {u.department && <span className="text-xs text-muted-foreground">{u.department.name}</span>}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 capitalize text-muted-foreground">{u.shift ?? '—'}</td>
                   </>
                 )}
@@ -136,13 +143,18 @@ export function UserTable({ users, variant, sort, order, onSort, renderActions, 
                 <p className="truncate text-xs text-muted-foreground">{u.email}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {variant === 'admin' && <SectionBadge department={u.department} />}
+                <SectionBadge department={u.department} />
                 <StatusBadge user={u} />
               </div>
-              {variant === 'supervisor' && (u.employee_code || u.shift) && (
-                <p className="text-xs text-muted-foreground">
+              {variant === 'supervisor' && (
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                  {u.assigned_area && (
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-medium text-foreground">
+                      {u.assigned_area}
+                    </span>
+                  )}
                   {[u.employee_code, u.shift && `${u.shift[0]?.toUpperCase()}${u.shift.slice(1)} shift`].filter(Boolean).join(' · ')}
-                </p>
+                </div>
               )}
             </div>
             <RowMenu user={u} render={renderActions} busy={busyId === u.id} />

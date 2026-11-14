@@ -4,9 +4,9 @@ import { cn } from '@/lib/utils'
 import type { Department } from '@/lib/types'
 
 const ITEMS: Record<Department['code'], string[]> = {
-  bakery: ['Hairnet on', 'Gloves on', 'Mask on', 'Apron on'],
-  meat_shop: ['Hairnet on', 'Gloves on', 'Mask on', 'Apron on'],
-  security: ['Uniform correct', 'Weapon carried', 'At assigned duty zone'],
+  bakery: ['Hairnet on', 'Gloves on', 'Apron on', 'Mask on'],
+  meat_shop: ['Hairnet on', 'Cut-resistant gloves', 'Protective apron', 'Mask on'],
+  security: ['Required uniform on', 'Firearm secure', 'Walkie-talkie equipped', 'At assigned position'],
 }
 
 function storageKey(userId: string): string {

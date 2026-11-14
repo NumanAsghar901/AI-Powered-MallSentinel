@@ -20,6 +20,7 @@ router = APIRouter(prefix="/evidence", tags=["evidence"])
 _bearer = HTTPBearer(auto_error=False)
 
 AdminOrSupervisor = Depends(require_role(UserRole.admin, UserRole.supervisor))
+SupervisorOnly = Depends(require_role(UserRole.supervisor))
 AnyActiveUser = Depends(require_role(UserRole.admin, UserRole.supervisor, UserRole.employee))
 
 
@@ -104,7 +105,7 @@ async def review_evidence(
     evidence_id: uuid.UUID,
     body: EvidenceReviewRequest,
     request: Request,
-    user: User = AdminOrSupervisor,
+    user: User = SupervisorOnly,
     db: AsyncSession = Depends(get_db),
 ) -> EvidenceOut:
     evidence = await evidence_service.review_evidence(

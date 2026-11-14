@@ -83,12 +83,14 @@ export interface EmployeeCreateInput extends ProfileFields {
   full_name: string
   phone?: string | null
   password: string
+  department_id?: number
 }
 
 export interface EmployeeUpdateInput extends ProfileFields {
   email?: string
   full_name?: string
   phone?: string | null
+  department_id?: number
   status?: 'active' | 'disabled'
   password?: string
 }
@@ -134,6 +136,8 @@ export interface Penalty {
   amount_pkr: number | null
   suspension_days: number | null
   notes: string | null
+  evidence_id?: string | null
+  evidence_image_url?: string | null
   email_status: EmailStatus
   email_sent_at: string | null
   created_at: string
@@ -147,6 +151,7 @@ export interface PenaltyCreateInput {
   amount_pkr?: number
   suspension_days?: number
   notes?: string
+  evidence_id?: string
 }
 
 export interface PenaltyListParams {
