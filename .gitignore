@@ -15,3 +15,5 @@ reference site/
 .claude/
 *.tsbuildinfo
 resources/SRS documentation/
+
+storage/
