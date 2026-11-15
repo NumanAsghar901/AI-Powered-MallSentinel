@@ -1,0 +1,19 @@
+[project]
+name = "mallsentinel-api"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "email-validator>=2.2.0",
+    "argon2-cffi>=23.1.0",
+    "PyJWT>=2.10.0",
+    "aiosmtplib>=3.0.0",
+    "pillow>=10.0.0",
+    "cloudinary>=1.40.0"
+]
