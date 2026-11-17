@@ -113,16 +113,6 @@ export function LoginPage() {
           </Button>
         </form>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
-            <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
-          </div>
-          {/* Placeholder: Google OAuth is not implemented yet. */}
-          <Button type="button" variant="outline" size="lg" className="w-full" disabled>
-            Continue with Google — coming soon
-          </Button>
-        </div>
-
         <p className="text-center text-xs text-muted-foreground">
           Accounts are created by your administrator. There is no public sign-up.
         </p>
