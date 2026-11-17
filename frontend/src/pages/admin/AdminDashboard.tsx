@@ -1,4 +1,4 @@
-import { useQueries, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Camera, MapPinned, MonitorPlay, ShieldCheck, UserCog, UserPlus, UserX, Layers } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -52,10 +52,14 @@ function ActivityCard() {
   const signins = useQuery({
     queryKey: ['dash', 'signins'],
     queryFn: () => api.supervisors.list({ page_size: 6, sort: 'last_login_at', order: 'desc', status: 'active' }),
+    enabled: tab === 'signins',
+    staleTime: 30_000,
   })
   const newest = useQuery({
     queryKey: ['dash', 'newest'],
     queryFn: () => api.supervisors.list({ page_size: 6, sort: 'created_at', order: 'desc', status: 'active' }),
+    enabled: tab === 'newest',
+    staleTime: 30_000,
   })
   const q = tab === 'signins' ? signins : newest
   const items = (q.data?.items ?? []).filter((u) => tab === 'newest' || u.last_login_at)
@@ -109,26 +113,20 @@ export function AdminDashboard() {
   const firstName = user?.full_name.split(' ')[0] ?? ''
 
   const departments = useQuery({ queryKey: ['departments'], queryFn: api.departments.list, staleTime: Infinity })
-  const active = useQuery({
-    queryKey: ['dash', 'sup-active'],
-    queryFn: async () => (await api.supervisors.list({ page_size: 1, status: 'active' })).total,
+  const stats = useQuery({
+    queryKey: ['dash', 'sup-stats'],
+    queryFn: api.supervisors.stats,
+    staleTime: 30_000,
   })
-  const disabled = useQuery({
-    queryKey: ['dash', 'sup-disabled'],
-    queryFn: async () => (await api.supervisors.list({ page_size: 1, status: 'disabled' })).total,
-  })
-  const perDept = useQueries({
-    queries: (departments.data ?? []).map((d) => ({
-      queryKey: ['dash', 'sup-dept', d.id],
-      queryFn: async () => (await api.supervisors.list({ page_size: 1, department_id: d.id, status: 'active' })).total,
-    })),
-  })
-  const segments: Segment[] = (departments.data ?? []).map((d, i) => ({
+  const activeCount = stats.data?.active ?? 0
+  const disabledCount = stats.data?.disabled ?? 0
+
+  const segments: Segment[] = (departments.data ?? []).map((d) => ({
     label: d.name,
-    value: perDept[i]?.data ?? 0,
+    value: stats.data?.by_department?.[String(d.id)] ?? 0,
     color: SECTION_COLOR[d.code],
   }))
-  const donutReady = departments.isSuccess && perDept.every((q) => q.isSuccess)
+  const donutReady = departments.isSuccess && stats.isSuccess
   const covered = segments.filter((s) => s.value > 0).length
 
   return (
@@ -152,8 +150,8 @@ export function AdminDashboard() {
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { icon: ShieldCheck, label: 'Active supervisors', value: active.data ?? 0, loading: active.isPending, hint: 'Can sign in today', tone: 'teal', to: '/admin/supervisors?status=active' },
-          { icon: UserX, label: 'Disabled supervisors', value: disabled.data ?? 0, loading: disabled.isPending, hint: 'Cannot sign in', tone: 'danger', to: '/admin/supervisors?status=disabled' },
+          { icon: ShieldCheck, label: 'Active supervisors', value: activeCount, loading: stats.isPending, hint: 'Can sign in today', tone: 'teal', to: '/admin/supervisors?status=active' },
+          { icon: UserX, label: 'Disabled supervisors', value: disabledCount, loading: stats.isPending, hint: 'Cannot sign in', tone: 'danger', to: '/admin/supervisors?status=disabled' },
           { icon: Layers, label: 'Sections covered', value: covered, loading: !donutReady, hint: `Of ${departments.data?.length ?? 3} sections have a supervisor`, tone: 'amber', to: '/admin/supervisors' },
           { icon: Camera, label: 'CCTV cameras', text: 'Not set up yet', loading: false, hint: 'Camera management is planned', tone: 'steel', to: undefined },
         ].map((c, i) => (

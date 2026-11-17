@@ -2,11 +2,12 @@ import logging
 import uuid
 
 from sqlalchemy import Select, func, or_, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import BadRequest, Forbidden, NotFound
 from app.core.security import utcnow
-from app.models import EmailStatus, Penalty, PenaltySeverity, User, UserRole, UserStatus
+from app.models import EmailStatus, EmployeeProfile, Penalty, PenaltySeverity, User, UserRole, UserStatus
 from app.schemas.penalty import REASON_LABELS, REASONS_BY_DEPARTMENT, PenaltyCreate, describe_action
 from app.services import audit_service, email_service
 from app.services.audit_service import AuditAction
@@ -21,8 +22,22 @@ def _department_id(actor: User) -> int:
     return actor.supervisor_profile.department_id
 
 
+def _penalty_eager_options():
+    return (
+        selectinload(Penalty.employee).selectinload(User.employee_profile).selectinload(EmployeeProfile.department),
+        selectinload(Penalty.issued_by),
+        selectinload(Penalty.department),
+        selectinload(Penalty.evidence),
+    )
+
+
 async def _load(db: AsyncSession, penalty_id: uuid.UUID) -> Penalty | None:
-    stmt = select(Penalty).where(Penalty.id == penalty_id).execution_options(populate_existing=True)
+    stmt = (
+        select(Penalty)
+        .options(*_penalty_eager_options())
+        .where(Penalty.id == penalty_id)
+        .execution_options(populate_existing=True)
+    )
     return await db.scalar(stmt)
 
 
@@ -137,7 +152,12 @@ def _filtered(base: Select[tuple[Penalty]], search: str | None, severity: Penalt
 
 async def _page(db: AsyncSession, stmt: Select[tuple[Penalty]], page: int, page_size: int) -> tuple[list[Penalty], int]:
     total = await db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-    stmt = stmt.order_by(Penalty.created_at.desc(), Penalty.id).offset((page - 1) * page_size).limit(page_size)
+    stmt = (
+        stmt.options(*_penalty_eager_options())
+        .order_by(Penalty.created_at.desc(), Penalty.id)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
     return list((await db.scalars(stmt)).unique().all()), total
 
 

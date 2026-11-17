@@ -247,6 +247,8 @@ export const api = {
   },
   /** Admin: supervisors only. Employees are managed by supervisors. */
   supervisors: {
+    stats: () =>
+      request<{ active: number; disabled: number; by_department: Record<string, number> }>('/supervisors/stats'),
     list: (params: UserListParams) => request<Page<User>>(`/supervisors${buildQuery(params)}`),
     create: (body: SupervisorCreateInput) => post<User>('/supervisors', body),
     update: (id: string, body: SupervisorUpdateInput) =>

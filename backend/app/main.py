@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
@@ -8,6 +9,8 @@ from app.routers import auth, departments, employees, evidence, health, penaltie
 
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.APP_NAME, version="0.1.0")
+    # Compress JSON payloads over 1KB (saves ~75% bandwidth & network latency)
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

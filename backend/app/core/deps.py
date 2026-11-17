@@ -4,12 +4,14 @@ from collections.abc import Awaitable, Callable
 import jwt
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, Forbidden
 from app.core.security import decode_access_token
 from app.db.session import get_db
-from app.models import User, UserRole, UserStatus
+from app.models import EmployeeProfile, SupervisorProfile, User, UserRole, UserStatus
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -32,7 +34,16 @@ async def get_current_user(
     except (jwt.PyJWTError, KeyError, ValueError):
         raise _unauthorized("Invalid authentication token.", "INVALID_TOKEN")
 
-    user = await db.get(User, user_id)
+    stmt = (
+        select(User)
+        .where(User.id == user_id)
+        .options(
+            selectinload(User.supervisor_profile).selectinload(SupervisorProfile.department),
+            selectinload(User.employee_profile).selectinload(EmployeeProfile.department),
+            selectinload(User.admin_profile),
+        )
+    )
+    user = await db.scalar(stmt)
     if user is None or user.status != UserStatus.active:
         raise _unauthorized("Your account is not active.", "ACCOUNT_INACTIVE")
     # Tokens issued before a password change are no longer valid.

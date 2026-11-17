@@ -61,6 +61,11 @@ class Settings(BaseSettings):
     SEED_DEMO_PASSWORD: str | None = None
     SEED_DEMO_EMAIL_DOMAIN: str = "demo.mallsentinel.pk"
 
+    # Redis / Upstash caching configuration (optional; falls back to fast in-memory TTL cache)
+    REDIS_URL: str | None = None
+    UPSTASH_REDIS_REST_URL: str | None = None
+    UPSTASH_REDIS_REST_TOKEN: str | None = None
+
     # Cloudinary configuration (optional; if omitted, images are stored locally and served via authenticated endpoint)
     CLOUDINARY_CLOUD_NAME: str | None = None
     CLOUDINARY_API_KEY: str | None = None

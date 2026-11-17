@@ -1,14 +1,20 @@
 import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { FullPageSpinner } from '@/components/StateViews'
-import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
-import { LoginPage } from '@/pages/auth/LoginPage'
-import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
-import { ForbiddenPage } from '@/pages/errors/ForbiddenPage'
-import { NotFoundPage } from '@/pages/errors/NotFoundPage'
-import { LandingPage } from '@/pages/landing/LandingPage'
 import { RequireAuth, RequireRole } from '@/routes/guards'
 import { NavTracker } from '@/routes/NavTracker'
+
+// Public & Auth routes (code-split for fast initial load)
+const LandingPage = lazy(() => import('@/pages/landing/LandingPage').then((m) => ({ default: m.LandingPage })))
+const LoginPage = lazy(() => import('@/pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })))
+const ForgotPasswordPage = lazy(() =>
+  import('@/pages/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })),
+)
+const ResetPasswordPage = lazy(() =>
+  import('@/pages/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
+)
+const ForbiddenPage = lazy(() => import('@/pages/errors/ForbiddenPage').then((m) => ({ default: m.ForbiddenPage })))
+const NotFoundPage = lazy(() => import('@/pages/errors/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 
 // The signed-in app is code-split so visitors to the public site never download it.
 const AppShell = lazy(() => import('@/components/layout/AppShell').then((m) => ({ default: m.AppShell })))

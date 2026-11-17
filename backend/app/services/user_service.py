@@ -8,8 +8,10 @@ import uuid
 from typing import Any, Literal
 
 from sqlalchemy import Select, func, or_, select, update
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import cache
 from app.core.errors import BadRequest, Conflict, Forbidden, NotFound
 from app.core.security import hash_password, utcnow
 from app.models import (
@@ -44,7 +46,16 @@ _EMPLOYEE_FIELDS = ("designation", "shift", "assigned_area", "employee_code")
 
 
 async def get_user(db: AsyncSession, user_id: uuid.UUID) -> User | None:
-    stmt = select(User).where(User.id == user_id).execution_options(populate_existing=True)
+    stmt = (
+        select(User)
+        .where(User.id == user_id)
+        .options(
+            selectinload(User.supervisor_profile).selectinload(SupervisorProfile.department),
+            selectinload(User.employee_profile).selectinload(EmployeeProfile.department),
+            selectinload(User.admin_profile),
+        )
+        .execution_options(populate_existing=True)
+    )
     return await db.scalar(stmt)
 
 
@@ -131,9 +142,53 @@ async def list_users(
     total = await db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     column = _SORT_COLUMNS[sort]
     ordered = column.asc().nulls_last() if order == "asc" else column.desc().nulls_last()
-    stmt = stmt.order_by(ordered, User.id).offset((page - 1) * page_size).limit(page_size)
+    stmt = (
+        stmt.options(
+            selectinload(User.supervisor_profile).selectinload(SupervisorProfile.department),
+            selectinload(User.employee_profile).selectinload(EmployeeProfile.department),
+            selectinload(User.admin_profile),
+        )
+        .order_by(ordered, User.id)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
     users = list((await db.scalars(stmt)).unique().all())
     return users, total
+
+
+async def get_supervisor_stats(db: AsyncSession) -> dict[str, Any]:
+    cached = await cache.get("supervisors:stats")
+    if cached is not None:
+        return cached
+
+    stmt = (
+        select(
+            SupervisorProfile.department_id,
+            func.count(User.id).filter(User.status == UserStatus.active).label("active_count"),
+            func.count(User.id).filter(User.status == UserStatus.disabled).label("disabled_count"),
+        )
+        .join(User, User.id == SupervisorProfile.user_id)
+        .where(User.role == UserRole.supervisor)
+        .group_by(SupervisorProfile.department_id)
+    )
+    rows = (await db.execute(stmt)).all()
+
+    total_active = 0
+    total_disabled = 0
+    by_dept: dict[str, int] = {}
+    for dept_id, act_cnt, dis_cnt in rows:
+        total_active += act_cnt or 0
+        total_disabled += dis_cnt or 0
+        if dept_id is not None:
+            by_dept[str(dept_id)] = act_cnt or 0
+
+    result = {
+        "active": total_active,
+        "disabled": total_disabled,
+        "by_department": by_dept,
+    }
+    await cache.set("supervisors:stats", result, ttl_seconds=30)
+    return result
 
 
 # --------------------------------------------------------------------------- shared helpers

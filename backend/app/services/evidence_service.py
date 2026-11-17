@@ -3,6 +3,7 @@ import uuid
 from pathlib import Path
 
 from sqlalchemy import Select, func, or_, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -83,7 +84,12 @@ async def list_evidence(
     total = await db.scalar(count_stmt) or 0
 
     stmt = (
-        stmt.order_by(CctvEvidence.captured_at.desc(), CctvEvidence.created_at.desc())
+        stmt.options(
+            selectinload(CctvEvidence.department),
+            selectinload(CctvEvidence.employee).selectinload(User.employee_profile),
+            selectinload(CctvEvidence.reviewed_by),
+        )
+        .order_by(CctvEvidence.captured_at.desc(), CctvEvidence.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
@@ -92,7 +98,16 @@ async def list_evidence(
 
 
 async def get_evidence(db: AsyncSession, actor: User, evidence_id: uuid.UUID) -> CctvEvidence:
-    stmt = select(CctvEvidence).where(CctvEvidence.id == evidence_id).execution_options(populate_existing=True)
+    stmt = (
+        select(CctvEvidence)
+        .options(
+            selectinload(CctvEvidence.department),
+            selectinload(CctvEvidence.employee).selectinload(User.employee_profile),
+            selectinload(CctvEvidence.reviewed_by),
+        )
+        .where(CctvEvidence.id == evidence_id)
+        .execution_options(populate_existing=True)
+    )
     evidence = await db.scalar(stmt)
     if evidence is None:
         raise NotFound("Evidence record not found.")

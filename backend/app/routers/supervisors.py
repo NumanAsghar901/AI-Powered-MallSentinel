@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import cache
 from app.core.deps import client_ip, require_role
 from app.db.session import get_db
 from app.models import User, UserRole, UserStatus
@@ -14,6 +15,11 @@ from app.services.user_service import SortField, SortOrder
 # Admins manage supervisors only. Employees belong to their supervisor and are invisible to admins.
 router = APIRouter(prefix="/supervisors", tags=["supervisors (admin)"])
 AdminOnly = Depends(require_role(UserRole.admin))
+
+
+@router.get("/stats")
+async def supervisor_stats(_: User = AdminOnly, db: AsyncSession = Depends(get_db)) -> dict:
+    return await user_service.get_supervisor_stats(db)
 
 
 @router.get("", response_model=Page[UserOut])
@@ -39,7 +45,9 @@ async def list_supervisors(
 async def create_supervisor(
     body: SupervisorCreate, request: Request, actor: User = AdminOnly, db: AsyncSession = Depends(get_db)
 ) -> UserOut:
-    return UserOut.from_user(await user_service.create_supervisor(db, actor, body, client_ip(request)))
+    user = await user_service.create_supervisor(db, actor, body, client_ip(request))
+    await cache.delete("supervisors:stats")
+    return UserOut.from_user(user)
 
 
 @router.get("/{user_id}", response_model=UserOut)
@@ -52,29 +60,33 @@ async def update_supervisor(
     user_id: uuid.UUID, body: SupervisorUpdate, request: Request,
     actor: User = AdminOnly, db: AsyncSession = Depends(get_db),
 ) -> UserOut:
-    return UserOut.from_user(await user_service.update_supervisor(db, actor, user_id, body, client_ip(request)))
+    user = await user_service.update_supervisor(db, actor, user_id, body, client_ip(request))
+    await cache.delete("supervisors:stats")
+    return UserOut.from_user(user)
 
 
 @router.post("/{user_id}/disable", response_model=UserOut)
 async def disable_supervisor(
     user_id: uuid.UUID, request: Request, actor: User = AdminOnly, db: AsyncSession = Depends(get_db)
 ) -> UserOut:
-    return UserOut.from_user(
-        await user_service.set_supervisor_status(db, actor, user_id, UserStatus.disabled, client_ip(request))
-    )
+    user = await user_service.set_supervisor_status(db, actor, user_id, UserStatus.disabled, client_ip(request))
+    await cache.delete("supervisors:stats")
+    return UserOut.from_user(user)
 
 
 @router.post("/{user_id}/enable", response_model=UserOut)
 async def enable_supervisor(
     user_id: uuid.UUID, request: Request, actor: User = AdminOnly, db: AsyncSession = Depends(get_db)
 ) -> UserOut:
-    return UserOut.from_user(
-        await user_service.set_supervisor_status(db, actor, user_id, UserStatus.active, client_ip(request))
-    )
+    user = await user_service.set_supervisor_status(db, actor, user_id, UserStatus.active, client_ip(request))
+    await cache.delete("supervisors:stats")
+    return UserOut.from_user(user)
 
 
 @router.post("/{user_id}/unlock", response_model=UserOut)
 async def unlock_supervisor(
     user_id: uuid.UUID, request: Request, actor: User = AdminOnly, db: AsyncSession = Depends(get_db)
 ) -> UserOut:
-    return UserOut.from_user(await user_service.unlock_supervisor(db, actor, user_id, client_ip(request)))
+    user = await user_service.unlock_supervisor(db, actor, user_id, client_ip(request))
+    await cache.delete("supervisors:stats")
+    return UserOut.from_user(user)
