@@ -25,19 +25,29 @@ type Feature = (typeof FEATURES)[number]
 
 function FeatureCard({ f }: { f: Feature }) {
   return (
-    <SpotlightCard as="li" className="glass w-[18rem] shrink-0 rounded-2xl p-6 sm:w-[20rem]">
-      <span className="flex size-12 items-center justify-center rounded-xl -ln-fg/[0.07] text-2xl shadow-inner" aria-hidden>
+    <SpotlightCard
+      as="li"
+      className="glass w-[14.5rem] shrink-0 rounded-xl p-4 sm:w-[17.5rem] sm:rounded-2xl sm:p-5 md:w-[20rem] md:p-6"
+    >
+      <span
+        className="flex size-9 items-center justify-center rounded-lg bg-ln-fg/[0.07] text-xl shadow-inner sm:size-11 sm:rounded-xl sm:text-2xl md:size-12"
+        aria-hidden
+      >
         {f.emoji}
       </span>
-      <h3 className="mt-5 text-lg font-semibold text-ln-fg">{f.title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-ln-muted">{f.text}</p>
+      <h3 className="mt-3 text-sm font-semibold leading-snug text-ln-fg sm:mt-4 sm:text-base md:mt-5 md:text-lg">
+        {f.title}
+      </h3>
+      <p className="mt-1.5 text-xs leading-relaxed text-ln-muted line-clamp-3 sm:mt-2 sm:text-sm sm:line-clamp-none">
+        {f.text}
+      </p>
     </SpotlightCard>
   )
 }
 
 function CardRow({ items, hidden = false }: { items: Feature[]; hidden?: boolean }) {
   return (
-    <ul className={hidden ? 'marquee-dup flex gap-5' : 'flex gap-5'} aria-hidden={hidden || undefined}>
+    <ul className={hidden ? 'marquee-dup flex gap-3 sm:gap-4 md:gap-5' : 'flex gap-3 sm:gap-4 md:gap-5'} aria-hidden={hidden || undefined}>
       {items.map((f) => (
         <FeatureCard key={f.title} f={f} />
       ))}
@@ -45,11 +55,11 @@ function CardRow({ items, hidden = false }: { items: Feature[]; hidden?: boolean
   )
 }
 
-/** Two rows of cards drifting right to left at different speeds; they pause on hover. */
+/** Two rows of cards drifting right to left at faster, smooth speeds; they pause on hover/touch. */
 function Marquee({ items, duration }: { items: Feature[]; duration: number }) {
   return (
-    <div className="marquee py-3">
-      <div className="marquee-track" style={{ ['--dur' as string]: `${duration}s`, ['--gap' as string]: '1.25rem' }}>
+    <div className="marquee py-2 sm:py-3">
+      <div className="marquee-track" style={{ ['--dur' as string]: `${duration}s`, ['--gap' as string]: '0.85rem' }}>
         <CardRow items={items} />
         <CardRow items={items} hidden />
       </div>
@@ -60,7 +70,7 @@ function Marquee({ items, duration }: { items: Feature[]; duration: number }) {
 export function Features() {
   const half = FEATURES.length / 2
   return (
-    <section id="features" className="relative isolate overflow-hidden bg-ln-1 ln-mix-b py-24 text-ln-fg sm:py-28">
+    <section id="features" className="relative isolate overflow-hidden bg-ln-1 ln-mix-b py-20 text-ln-fg sm:py-28">
       <div className="grid-bg absolute inset-0 -z-10 opacity-70" aria-hidden />
       <div className="amber-glow pointer-events-none parallax absolute -left-20 bottom-0 size-[34rem] -z-10" aria-hidden />
       <div className="maroon-glow pointer-events-none parallax absolute right-[30%] top-0 size-[30rem] -z-10" aria-hidden />
@@ -77,9 +87,9 @@ export function Features() {
         />
       </div>
 
-      <div className="mt-14 space-y-4">
-        <Marquee items={FEATURES.slice(0, half)} duration={85} />
-        <Marquee items={FEATURES.slice(half)} duration={110} />
+      <div className="mt-10 space-y-3 sm:mt-14 sm:space-y-4">
+        <Marquee items={FEATURES.slice(0, half)} duration={36} />
+        <Marquee items={FEATURES.slice(half)} duration={44} />
       </div>
     </section>
   )

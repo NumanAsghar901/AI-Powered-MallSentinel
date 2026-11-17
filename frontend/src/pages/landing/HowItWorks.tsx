@@ -101,20 +101,20 @@ export function HowItWorks() {
           {STEPS.map((s, i) => {
             const right = i % 2 === 1
             return (
-              <ImpactItem key={s.title} className="relative grid grid-cols-[3.2rem_1fr] items-start gap-4 sm:grid-cols-2 sm:gap-0">
+              <ImpactItem key={s.title} className="relative grid grid-cols-[2.6rem_1fr] items-start gap-3 sm:grid-cols-2 sm:gap-0">
                 <span
-                  className="impact-node relative z-10 flex size-[3.2rem] items-center justify-center rounded-full border border-[hsl(190_70%_60%/0.6)] bg-[hsl(217_60%_14%)] text-2xl shadow-[0_0_28px_-4px_hsl(190_85%_50%/0.7)] sm:absolute sm:left-1/2 sm:top-3 sm:-translate-x-1/2"
+                  className="impact-node relative z-10 flex size-[2.6rem] items-center justify-center rounded-full border border-[hsl(190_70%_60%/0.6)] bg-[hsl(217_60%_14%)] text-xl shadow-[0_0_24px_-4px_hsl(190_85%_50%/0.7)] sm:absolute sm:left-1/2 sm:top-3 sm:size-[3.2rem] sm:-translate-x-1/2 sm:text-2xl sm:shadow-[0_0_28px_-4px_hsl(190_85%_50%/0.7)]"
                   aria-hidden
                 >
                   {s.emoji}
                 </span>
                 <SpotlightCard
-                  className={`impact-card glass rounded-2xl p-5 ${right ? 'sm:col-start-2 sm:ml-14' : 'sm:col-start-1 sm:mr-14'}`}
+                  className={`impact-card glass rounded-xl p-4 sm:rounded-2xl sm:p-5 ${right ? 'sm:col-start-2 sm:ml-14' : 'sm:col-start-1 sm:mr-14'}`}
                 >
                   <span className="impact-ring" aria-hidden />
                   <p className="text-xs font-semibold uppercase tracking-wider text-ln-accent">Step {i + 1}</p>
-                  <h3 className="mt-1 text-lg font-semibold">{s.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-ln-muted">{s.text}</p>
+                  <h3 className="mt-1 text-base font-semibold sm:text-lg">{s.title}</h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-ln-muted sm:mt-2 sm:text-sm">{s.text}</p>
                 </SpotlightCard>
               </ImpactItem>
             )

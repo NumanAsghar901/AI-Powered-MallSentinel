@@ -52,26 +52,26 @@ export function SectionsShowcase() {
             <Reveal key={s.name} delay={i * 120} variant={i === 0 ? 'left' : i === 2 ? 'right' : 'zoom'}>
               <SpotlightCard
                 tilt={9}
-                className="glass h-full overflow-hidden rounded-3xl"
+                className="glass h-full overflow-hidden rounded-2xl sm:rounded-3xl"
                 style={{ boxShadow: `0 24px 60px -30px ${s.glow}` }}
               >
                 <div className="h-1.5" style={{ background: s.color, boxShadow: `0 0 20px ${s.color}` }} />
-                <div className="p-7">
-                  <div className="flex items-center gap-4 [transform:translateZ(40px)]">
+                <div className="p-5 sm:p-7">
+                  <div className="flex items-center gap-3.5 sm:gap-4 [transform:translateZ(40px)]">
                     <span
-                      className="flex size-14 items-center justify-center rounded-2xl text-3xl"
+                      className="flex size-11 sm:size-14 items-center justify-center rounded-xl sm:rounded-2xl text-2xl sm:text-3xl"
                       style={{ background: `color-mix(in srgb, ${s.color} 22%, transparent)`, boxShadow: `0 0 28px -6px ${s.color}` }}
                       aria-hidden
                     >
                       {s.emoji}
                     </span>
                     <div>
-                      <h3 className="text-2xl font-semibold">{s.name}</h3>
-                      <p className="text-sm text-ln-muted">{s.blurb}</p>
+                      <h3 className="text-xl sm:text-2xl font-semibold">{s.name}</h3>
+                      <p className="text-xs sm:text-sm text-ln-muted">{s.blurb}</p>
                     </div>
                   </div>
-                  <p className="mt-7 text-xs font-semibold uppercase tracking-wider text-ln-faint">What we check</p>
-                  <ul className="mt-3 space-y-3 [transform:translateZ(24px)]">
+                  <p className="mt-5 sm:mt-7 text-xs font-semibold uppercase tracking-wider text-ln-faint">What we check</p>
+                  <ul className="mt-2.5 sm:mt-3 space-y-2.5 sm:space-y-3 [transform:translateZ(24px)]">
                     {s.checks.map((c) => (
                       <li key={c} className="flex items-center gap-3 text-sm">
                         <span

@@ -15,11 +15,11 @@ const ITEMS = [
 
 function Row({ hidden = false }: { hidden?: boolean }) {
   return (
-    <ul className={hidden ? 'marquee-dup flex gap-3' : 'flex gap-3'} aria-hidden={hidden || undefined}>
+    <ul className={hidden ? 'marquee-dup flex gap-2.5 sm:gap-3' : 'flex gap-2.5 sm:gap-3'} aria-hidden={hidden || undefined}>
       {ITEMS.map((t) => (
         <li
           key={t}
-          className="flex items-center gap-2.5 whitespace-nowrap rounded-full border -ln-fg/10 -ln-fg/[0.04] px-4 py-2 text-sm font-medium text-ln-muted"
+          className="flex items-center gap-2 whitespace-nowrap rounded-full border border-ln-fg/10 bg-ln-fg/[0.04] px-3 py-1.5 text-xs font-medium text-ln-muted sm:gap-2.5 sm:px-4 sm:py-2 sm:text-sm"
         >
           <span className="size-1.5 rounded-full bg-[hsl(190_90%_60%)] shadow-[0_0_8px_hsl(190_90%_60%)]" aria-hidden />
           {t}
@@ -32,9 +32,9 @@ function Row({ hidden = false }: { hidden?: boolean }) {
 /** Compact ticker of capabilities, scrolling left to right (the features rows below run right to left). */
 export function CapabilityStrip() {
   return (
-    <section aria-label="Capabilities" className="relative border-y -ln-fg/10 bg-ln-2 py-4">
+    <section aria-label="Capabilities" className="relative border-y border-ln-fg/10 bg-ln-2 py-3 sm:py-4">
       <div className="marquee">
-        <div className="marquee-track" style={{ ['--dur' as string]: '55s', ['--dir' as string]: 'reverse', ['--gap' as string]: '0.75rem' }}>
+        <div className="marquee-track" style={{ ['--dur' as string]: '26s', ['--dir' as string]: 'reverse', ['--gap' as string]: '0.65rem' }}>
           <Row />
           <Row hidden />
         </div>
