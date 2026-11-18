@@ -2,7 +2,7 @@ import logging
 import uuid
 
 from sqlalchemy import Select, func, or_, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import BadRequest, Forbidden, NotFound
@@ -24,10 +24,10 @@ def _department_id(actor: User) -> int:
 
 def _penalty_eager_options():
     return (
-        selectinload(Penalty.employee).selectinload(User.employee_profile).selectinload(EmployeeProfile.department),
-        selectinload(Penalty.issued_by),
-        selectinload(Penalty.department),
-        selectinload(Penalty.evidence),
+        joinedload(Penalty.employee).joinedload(User.employee_profile).joinedload(EmployeeProfile.department),
+        joinedload(Penalty.issued_by),
+        joinedload(Penalty.department),
+        joinedload(Penalty.evidence),
     )
 
 

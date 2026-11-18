@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from sqlalchemy import select, update
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -15,7 +16,15 @@ from app.core.security import (
     utcnow,
     verify_password,
 )
-from app.models import PasswordResetToken, RefreshToken, User, UserStatus
+from app.models import (
+    AdminProfile,
+    EmployeeProfile,
+    PasswordResetToken,
+    RefreshToken,
+    SupervisorProfile,
+    User,
+    UserStatus,
+)
 from app.services import audit_service, email_service
 from app.services.audit_service import AuditAction
 
@@ -88,7 +97,15 @@ async def login(
     db: AsyncSession, email: str, password: str, ip: str | None, user_agent: str | None
 ) -> AuthResult:
     now = utcnow()
-    user = await db.scalar(select(User).where(User.email == email))
+    user = await db.scalar(
+        select(User)
+        .options(
+            joinedload(User.supervisor_profile).joinedload(SupervisorProfile.department),
+            joinedload(User.employee_profile).joinedload(EmployeeProfile.department),
+            joinedload(User.admin_profile),
+        )
+        .where(User.email == email)
+    )
 
     if user is None:
         verify_password(password, None)  # equalise timing
@@ -172,7 +189,15 @@ async def refresh(
     if token.expires_at <= now:
         raise _session_expired()
 
-    user = await db.get(User, token.user_id)
+    user = await db.scalar(
+        select(User)
+        .options(
+            joinedload(User.supervisor_profile).joinedload(SupervisorProfile.department),
+            joinedload(User.employee_profile).joinedload(EmployeeProfile.department),
+            joinedload(User.admin_profile),
+        )
+        .where(User.id == token.user_id)
+    )
     if user is None or user.status != UserStatus.active:
         raise _session_expired()
 
@@ -190,7 +215,15 @@ async def logout(db: AsyncSession, raw_token: str | None, ip: str | None) -> Non
     if token is None or token.revoked_at is not None:
         return
     token.revoked_at = utcnow()
-    user = await db.get(User, token.user_id)
+    user = await db.scalar(
+        select(User)
+        .options(
+            joinedload(User.supervisor_profile).joinedload(SupervisorProfile.department),
+            joinedload(User.employee_profile).joinedload(EmployeeProfile.department),
+            joinedload(User.admin_profile),
+        )
+        .where(User.id == token.user_id)
+    )
     await audit_service.record(
         db, AuditAction.LOGOUT, actor=user, entity_type="user", entity_id=token.user_id, ip=ip
     )
@@ -199,7 +232,15 @@ async def logout(db: AsyncSession, raw_token: str | None, ip: str | None) -> Non
 
 async def forgot_password(db: AsyncSession, email: str, ip: str | None) -> None:
     """Always succeeds from the caller's point of view (no account enumeration)."""
-    user = await db.scalar(select(User).where(User.email == email))
+    user = await db.scalar(
+        select(User)
+        .options(
+            joinedload(User.supervisor_profile).joinedload(SupervisorProfile.department),
+            joinedload(User.employee_profile).joinedload(EmployeeProfile.department),
+            joinedload(User.admin_profile),
+        )
+        .where(User.email == email)
+    )
     eligible = user is not None and user.status == UserStatus.active and user.password_hash is not None
 
     if not eligible:
@@ -248,7 +289,15 @@ async def reset_password(db: AsyncSession, raw_token: str, new_password: str, ip
     if token.expires_at <= now:
         raise AppError(400, "RESET_TOKEN_EXPIRED", "This reset link has expired. Please request a new one.")
 
-    user = await db.get(User, token.user_id)
+    user = await db.scalar(
+        select(User)
+        .options(
+            joinedload(User.supervisor_profile).joinedload(SupervisorProfile.department),
+            joinedload(User.employee_profile).joinedload(EmployeeProfile.department),
+            joinedload(User.admin_profile),
+        )
+        .where(User.id == token.user_id)
+    )
     if user is None or user.status != UserStatus.active:
         raise AppError(400, "RESET_TOKEN_INVALID", "This reset link is invalid or has already been used.")
 

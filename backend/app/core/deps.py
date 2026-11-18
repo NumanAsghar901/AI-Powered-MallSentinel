@@ -5,7 +5,7 @@ import jwt
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, Forbidden
@@ -38,9 +38,9 @@ async def get_current_user(
         select(User)
         .where(User.id == user_id)
         .options(
-            selectinload(User.supervisor_profile).selectinload(SupervisorProfile.department),
-            selectinload(User.employee_profile).selectinload(EmployeeProfile.department),
-            selectinload(User.admin_profile),
+            joinedload(User.supervisor_profile).joinedload(SupervisorProfile.department),
+            joinedload(User.employee_profile).joinedload(EmployeeProfile.department),
+            joinedload(User.admin_profile),
         )
     )
     user = await db.scalar(stmt)

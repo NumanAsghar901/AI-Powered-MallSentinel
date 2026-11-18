@@ -5,7 +5,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { Field, PasswordInput } from '@/components/FormField'
 import { roleLabel } from '@/components/Badges'
-import { FullPageSpinner, InlineAlert } from '@/components/StateViews'
+import { InlineAlert } from '@/components/StateViews'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ApiError } from '@/lib/api'
@@ -34,7 +34,7 @@ function describe(err: unknown): LoginError {
 }
 
 export function LoginPage() {
-  const { login, logout, user, status } = useAuth()
+  const { login, logout, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [formError, setFormError] = useState<LoginError | null>(null)
@@ -55,8 +55,6 @@ export function LoginPage() {
       setFormError(describe(err))
     }
   })
-
-  if (status === 'loading') return <FullPageSpinner label="Checking your session…" />
 
   // Already signed in (for example after pressing Back from the dashboard): stay on this page, let them choose.
   if (user) {

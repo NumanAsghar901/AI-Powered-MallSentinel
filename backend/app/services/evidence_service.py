@@ -3,7 +3,7 @@ import uuid
 from pathlib import Path
 
 from sqlalchemy import Select, func, or_, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -85,25 +85,25 @@ async def list_evidence(
 
     stmt = (
         stmt.options(
-            selectinload(CctvEvidence.department),
-            selectinload(CctvEvidence.employee).selectinload(User.employee_profile),
-            selectinload(CctvEvidence.reviewed_by),
+            joinedload(CctvEvidence.department),
+            joinedload(CctvEvidence.employee).joinedload(User.employee_profile),
+            joinedload(CctvEvidence.reviewed_by),
         )
         .order_by(CctvEvidence.captured_at.desc(), CctvEvidence.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
     result = await db.scalars(stmt)
-    return list(result.all()), total
+    return list(result.unique().all()), total
 
 
 async def get_evidence(db: AsyncSession, actor: User, evidence_id: uuid.UUID) -> CctvEvidence:
     stmt = (
         select(CctvEvidence)
         .options(
-            selectinload(CctvEvidence.department),
-            selectinload(CctvEvidence.employee).selectinload(User.employee_profile),
-            selectinload(CctvEvidence.reviewed_by),
+            joinedload(CctvEvidence.department),
+            joinedload(CctvEvidence.employee).joinedload(User.employee_profile),
+            joinedload(CctvEvidence.reviewed_by),
         )
         .where(CctvEvidence.id == evidence_id)
         .execution_options(populate_existing=True)

@@ -8,7 +8,7 @@ import uuid
 from typing import Any, Literal
 
 from sqlalchemy import Select, func, or_, select, update
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import cache
@@ -50,9 +50,9 @@ async def get_user(db: AsyncSession, user_id: uuid.UUID) -> User | None:
         select(User)
         .where(User.id == user_id)
         .options(
-            selectinload(User.supervisor_profile).selectinload(SupervisorProfile.department),
-            selectinload(User.employee_profile).selectinload(EmployeeProfile.department),
-            selectinload(User.admin_profile),
+            joinedload(User.supervisor_profile).joinedload(SupervisorProfile.department),
+            joinedload(User.employee_profile).joinedload(EmployeeProfile.department),
+            joinedload(User.admin_profile),
         )
         .execution_options(populate_existing=True)
     )
@@ -144,9 +144,9 @@ async def list_users(
     ordered = column.asc().nulls_last() if order == "asc" else column.desc().nulls_last()
     stmt = (
         stmt.options(
-            selectinload(User.supervisor_profile).selectinload(SupervisorProfile.department),
-            selectinload(User.employee_profile).selectinload(EmployeeProfile.department),
-            selectinload(User.admin_profile),
+            joinedload(User.supervisor_profile).joinedload(SupervisorProfile.department),
+            joinedload(User.employee_profile).joinedload(EmployeeProfile.department),
+            joinedload(User.admin_profile),
         )
         .order_by(ordered, User.id)
         .offset((page - 1) * page_size)

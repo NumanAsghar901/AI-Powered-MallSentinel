@@ -85,9 +85,10 @@ async def record(
     ip: str | None = None,
 ) -> AuditLog:
     """Append a ledger row. Caller owns the transaction (commit happens with the business change)."""
-    await db.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": _LOCK_KEY})
-    prev = await db.scalar(select(AuditLog.hash).order_by(AuditLog.id.desc()).limit(1))
-    prev_hash = prev or GENESIS_HASH
+    # Combine advisory lock and previous hash fetch into a single database roundtrip
+    stmt = text("SELECT pg_advisory_xact_lock(:k), (SELECT hash FROM audit_log ORDER BY id DESC LIMIT 1) AS prev_hash")
+    lock_and_hash = (await db.execute(stmt, {"k": _LOCK_KEY})).one()
+    prev_hash = lock_and_hash[1] or GENESIS_HASH
 
     # JSONB round-trips through Python types; normalise now so the hash is reproducible.
     clean_details = json.loads(json.dumps(details or {}, default=str))
@@ -104,7 +105,6 @@ async def record(
     row_hash = compute_hash(prev_hash, _canonical(**fields, prev_hash=prev_hash))
     entry = AuditLog(**fields, prev_hash=prev_hash, hash=row_hash)
     db.add(entry)
-    await db.flush()
     return entry
 
 

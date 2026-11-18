@@ -44,10 +44,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Periodically refresh authenticated user's profile so department/section changes reflect live across devices
+  // Refresh authenticated user's profile on tab focus so department/section changes sync cleanly without DB flood
   useEffect(() => {
     if (status !== 'authenticated') return
-    const interval = setInterval(async () => {
+    const onFocus = async () => {
       try {
         const freshUser = await api.auth.me()
         setUser((prev) => {
@@ -60,8 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         /* ignore background transient network blips */
       }
-    }, 4000)
-    return () => clearInterval(interval)
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [status])
 
   // The API client calls this when a refresh explicitly fails mid-session

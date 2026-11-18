@@ -27,7 +27,7 @@ function FeatureCard({ f }: { f: Feature }) {
   return (
     <SpotlightCard
       as="li"
-      className="glass w-[14.5rem] shrink-0 rounded-xl p-4 sm:w-[17.5rem] sm:rounded-2xl sm:p-5 md:w-[20rem] md:p-6"
+      className="glass w-[13.5rem] shrink-0 rounded-xl p-3.5 sm:w-[17.5rem] sm:rounded-2xl sm:p-5 md:w-[20rem] md:p-6"
     >
       <span
         className="flex size-9 items-center justify-center rounded-lg bg-ln-fg/[0.07] text-xl shadow-inner sm:size-11 sm:rounded-xl sm:text-2xl md:size-12"
@@ -88,8 +88,8 @@ export function Features() {
       </div>
 
       <div className="mt-10 space-y-3 sm:mt-14 sm:space-y-4">
-        <Marquee items={FEATURES.slice(0, half)} duration={36} />
-        <Marquee items={FEATURES.slice(half)} duration={44} />
+        <Marquee items={FEATURES.slice(0, half)} duration={28} />
+        <Marquee items={FEATURES.slice(half)} duration={34} />
       </div>
     </section>
   )

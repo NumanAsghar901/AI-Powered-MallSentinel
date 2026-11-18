@@ -24,11 +24,12 @@ const SHIFT_ICON = { morning: Sun, evening: Sunset, night: MoonStar } as const
 
 export function EmployeeDashboard() {
   const { user } = useAuth()
-  // Dynamic live sync: polls every 3s so supervisor section assignments reflect instantly
+  // Dynamic live sync: refreshes on focus or once per minute to keep connection pool fast and free
   const profileQuery = useQuery({
     queryKey: ['me', 'live'],
     queryFn: api.auth.me,
-    refetchInterval: 3000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
     refetchOnWindowFocus: true,
   })
   const liveUser = profileQuery.data ?? user
