@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import cache
@@ -18,7 +18,10 @@ AdminOnly = Depends(require_role(UserRole.admin))
 
 
 @router.get("/stats")
-async def supervisor_stats(_: User = AdminOnly, db: AsyncSession = Depends(get_db)) -> dict:
+async def supervisor_stats(
+    response: Response, _: User = AdminOnly, db: AsyncSession = Depends(get_db)
+) -> dict:
+    response.headers["Cache-Control"] = "private, max-age=30"
     return await user_service.get_supervisor_stats(db)
 
 

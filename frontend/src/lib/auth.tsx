@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, getStoredToken, getStoredUser, hasSessionHint, refreshSession, setAccessToken, setSessionLostHandler, setStoredUser } from './api'
+import { api, getStoredToken, getStoredUser, hasSessionHint, isTokenValid, refreshSession, setAccessToken, setSessionLostHandler, setStoredUser } from './api'
 import type { User } from './types'
 
 type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
@@ -18,14 +18,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const initialUser = getStoredUser()
   const initialToken = getStoredToken()
+  const tokenValid = isTokenValid(initialToken)
 
-  const [user, setUser] = useState<User | null>(initialUser)
+  const [user, setUser] = useState<User | null>(tokenValid ? initialUser : null)
   const [status, setStatus] = useState<AuthStatus>(() =>
-    initialUser && initialToken ? 'authenticated' : (hasSessionHint() ? 'loading' : 'anonymous')
+    tokenValid && initialUser ? 'authenticated' : (hasSessionHint() ? 'loading' : 'anonymous')
   )
 
-  // Restore or background-refresh the session on load
+  // Restore or background-refresh the session on load ONLY when necessary
   useEffect(() => {
+    // If the token is already valid, do not fire a redundant serverless round-trip
+    if (tokenValid && initialUser) {
+      return
+    }
+    // If no session exists, skip refresh completely
+    if (!hasSessionHint()) {
+      setStatus('anonymous')
+      return
+    }
+
     let cancelled = false
     void refreshSession().then((data) => {
       if (cancelled) return
@@ -33,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user)
         setStoredUser(data.user)
         setStatus('authenticated')
-      } else if (!initialUser || !initialToken) {
+      } else {
         setUser(null)
         setStoredUser(null)
         setStatus('anonymous')
@@ -42,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [tokenValid, initialUser])
 
   // Refresh authenticated user's profile on tab focus so department/section changes sync cleanly without DB flood
   useEffect(() => {

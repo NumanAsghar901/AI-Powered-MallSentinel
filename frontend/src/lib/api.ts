@@ -97,6 +97,22 @@ export function getStoredToken(): string | null {
   }
 }
 
+export function isTokenValid(token: string | null): boolean {
+  if (!token) return false
+  try {
+    const parts = token.split('.')
+    const b64 = parts[1]
+    if (parts.length !== 3 || !b64) return false
+    const payload = JSON.parse(atob(b64.replace(/-/g, '+').replace(/_/g, '/')))
+    if (typeof payload.exp === 'number') {
+      return payload.exp * 1000 > Date.now() + 30_000
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function getStoredUser(): User | null {
   try {
     const raw = localStorage.getItem(USER_STORAGE_KEY)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,8 +13,9 @@ router = APIRouter(prefix="/departments", tags=["departments"])
 
 @router.get("", response_model=list[DepartmentOut])
 async def list_departments(
-    _: User = Depends(require_role(*ANY_ROLE)), db: AsyncSession = Depends(get_db)
+    response: Response, _: User = Depends(require_role(*ANY_ROLE)), db: AsyncSession = Depends(get_db)
 ) -> list[DepartmentOut]:
+    response.headers["Cache-Control"] = "private, max-age=120"
     cached = await cache.get("departments:all")
     if cached is not None:
         return [DepartmentOut(**d) for d in cached]

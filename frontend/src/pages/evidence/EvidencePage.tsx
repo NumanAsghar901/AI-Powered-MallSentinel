@@ -56,6 +56,7 @@ export function EvidencePage() {
   const { data: depts } = useQuery({
     queryKey: ['departments'],
     queryFn: api.departments.list,
+    staleTime: Infinity,
   })
 
   const { data, isLoading, isError, error, refetch } = useQuery({

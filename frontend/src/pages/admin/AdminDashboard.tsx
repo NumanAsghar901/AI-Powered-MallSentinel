@@ -18,7 +18,7 @@ import { cn, initials } from '@/lib/utils'
 import { Reveal } from '@/pages/landing/Reveal'
 
 function StatusChip() {
-  const health = useQuery({ queryKey: ['health'], queryFn: api.health, refetchInterval: 30_000, retry: false })
+  const health = useQuery({ queryKey: ['health'], queryFn: api.health, staleTime: 60_000, refetchInterval: 120_000, retry: false })
   const ok = health.isSuccess
   const label = health.isPending ? 'Checking API…' : ok ? `API online · ${health.data.ms} ms` : 'API unreachable'
   return (
