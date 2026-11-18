@@ -7,9 +7,16 @@ T = TypeVar("T")
 
 
 def _check_password(value: str) -> str:
-    if not re.search(r"[A-Za-z]", value) or not re.search(r"\d", value):
-        raise ValueError("Password must contain at least one letter and one number")
-    return value
+    has_letter = False
+    has_digit = False
+    for ch in value:
+        if ch.isalpha():
+            has_letter = True
+        elif ch.isdigit():
+            has_digit = True
+        if has_letter and has_digit:
+            return value
+    raise ValueError("Password must contain at least one letter and one number")
 
 
 Password = Annotated[str, Field(min_length=8, max_length=128), AfterValidator(_check_password)]

@@ -228,6 +228,8 @@ async def logout(db: AsyncSession, raw_token: str | None, ip: str | None) -> Non
         db, AuditAction.LOGOUT, actor=user, entity_type="user", entity_id=token.user_id, ip=ip
     )
     await db.commit()
+    from app.core.deps import invalidate_user_cache
+    invalidate_user_cache(token.user_id)
 
 
 async def forgot_password(db: AsyncSession, email: str, ip: str | None) -> None:
@@ -311,3 +313,5 @@ async def reset_password(db: AsyncSession, raw_token: str, new_password: str, ip
         db, AuditAction.PASSWORD_RESET_COMPLETED, actor=user, entity_type="user", entity_id=user.id, ip=ip
     )
     await db.commit()
+    from app.core.deps import invalidate_user_cache
+    invalidate_user_cache(user.id)

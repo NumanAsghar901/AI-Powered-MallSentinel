@@ -1,3 +1,4 @@
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 
@@ -14,6 +15,11 @@ from app.db.session import get_db
 from app.models import EmployeeProfile, SupervisorProfile, User, UserRole, UserStatus
 
 _bearer = HTTPBearer(auto_error=False)
+_USER_CACHE: dict[uuid.UUID, tuple[User, float]] = {}
+
+
+def invalidate_user_cache(user_id: uuid.UUID) -> None:
+    _USER_CACHE.pop(user_id, None)
 
 
 def _unauthorized(detail: str, code: str = "UNAUTHORIZED") -> AppError:
@@ -34,6 +40,22 @@ async def get_current_user(
     except (jwt.PyJWTError, KeyError, ValueError):
         raise _unauthorized("Invalid authentication token.", "INVALID_TOKEN")
 
+    now = time.monotonic()
+    cached = _USER_CACHE.get(user_id)
+    if cached is not None:
+        cached_user, expires_at = cached
+        if now < expires_at:
+            user = await db.merge(cached_user, load=False)
+            if user.status != UserStatus.active:
+                _USER_CACHE.pop(user_id, None)
+                raise _unauthorized("Your account is not active.", "ACCOUNT_INACTIVE")
+            if user.password_changed_at and payload.get("iat", 0) < int(user.password_changed_at.timestamp()):
+                _USER_CACHE.pop(user_id, None)
+                raise _unauthorized("Your session has expired. Please sign in again.", "TOKEN_EXPIRED")
+            return user
+        else:
+            _USER_CACHE.pop(user_id, None)
+
     stmt = (
         select(User)
         .where(User.id == user_id)
@@ -49,6 +71,7 @@ async def get_current_user(
     # Tokens issued before a password change are no longer valid.
     if user.password_changed_at and payload.get("iat", 0) < int(user.password_changed_at.timestamp()):
         raise _unauthorized("Your session has expired. Please sign in again.", "TOKEN_EXPIRED")
+    _USER_CACHE[user_id] = (user, now + 20.0)
     return user
 
 

@@ -16,7 +16,10 @@ from app.services.auth_service import AuthResult
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-_TAB_ID = re.compile(r"^[A-Za-z0-9-]{8,64}$")
+def _is_valid_tab_id(tab: str) -> bool:
+    if not (8 <= len(tab) <= 64):
+        return False
+    return tab.replace("-", "").isalnum()
 
 
 def _cookie_name(request: Request) -> str:
@@ -25,7 +28,7 @@ def _cookie_name(request: Request) -> str:
     A single shared cookie would make a sign-in in one tab replace the session of every other tab.
     """
     tab = request.headers.get("x-tab-id", "")
-    return f"{settings.REFRESH_COOKIE_NAME}_{tab}" if _TAB_ID.match(tab) else settings.REFRESH_COOKIE_NAME
+    return f"{settings.REFRESH_COOKIE_NAME}_{tab}" if _is_valid_tab_id(tab) else settings.REFRESH_COOKIE_NAME
 
 
 def _set_cookie(request: Request, response: Response, token: str) -> None:

@@ -54,8 +54,11 @@ function seeded(seed: number): () => number {
   }
 }
 
+const COLOR_RE = /[\d.]+/g
+
 function parseColor(css: string): [number, number, number] {
-  const m = css.match(/[\d.]+/g)
+  COLOR_RE.lastIndex = 0
+  const m = css.match(COLOR_RE)
   return m && m.length >= 3 ? [Number(m[0]), Number(m[1]), Number(m[2])] : [120, 220, 235]
 }
 
@@ -107,13 +110,19 @@ export function MeshBackdrop({ className }: { className?: string }) {
         }
       }
       readColor()
+      rect = canvas.getBoundingClientRect()
       draw(performance.now(), false)
     }
+
+    let rect = canvas.getBoundingClientRect()
+    const updateRect = () => {
+      rect = canvas.getBoundingClientRect()
+    }
+    window.addEventListener('scroll', updateRect, { passive: true })
 
     const draw = (t: number, interactive: boolean) => {
       ctx.clearRect(0, 0, w, h)
       const [r, g, b] = rgb
-      const rect = canvas.getBoundingClientRect()
       const cx = cursor.x - rect.left
       const cy = cursor.y - rect.top
       const R = 170
@@ -225,6 +234,7 @@ export function MeshBackdrop({ className }: { className?: string }) {
     document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
+      window.removeEventListener('scroll', updateRect)
       unsubscribe()
       ro.disconnect()
       io?.disconnect()
